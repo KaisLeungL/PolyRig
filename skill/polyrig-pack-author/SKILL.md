@@ -69,7 +69,10 @@ Write the pack as a draft first. Run:
 node scripts/validate-pack.mjs <pack-dir>
 ```
 
-Then route two independent reviews using the fixed prompts:
+Then route two independent reviews using the fixed prompts. Prefer two
+subagents or fresh independent sessions. If independent review is unavailable,
+state that limitation, keep the result as `draft written`, and do not report
+`ready`.
 
 1. Protocol / structure reviewer: pack protocol, directory shape, Evidence
    Matrix, references, validation readiness.

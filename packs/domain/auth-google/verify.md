@@ -16,11 +16,13 @@ setting it `verified`.
 Auth-core already requires expired/tampered/wrong-`alg`/wrong-issuer negative
 tests; make the Google variants concrete:
 
-- [ ] **[A]** Wrong-audience Google token rejected: a genuine, currently
-      valid Google ID token minted for a DIFFERENT client ID (easily obtained
-      from any other registered app or a scratch client) gets 401 from the
-      sign-in endpoint and creates no session. This proves `aud` is checked
-      against the web client ID, not merely that the token "is from Google".
+- [ ] **[A]** Wrong-audience Google token rejected: automated tests prefer a
+      verifier fixture or stub that exercises the `aud` mismatch path without
+      handling live credentials. If an integration test needs a real Google ID
+      token, mint it at test runtime only for a test-owned scratch client/account;
+      never commit, log, or reuse the token. [Evidence: E002, E010] The sign-in endpoint returns 401
+      and creates no session. This proves `aud` is checked against the web
+      client ID, not merely that the token "is from Google".
 - [ ] **[A]** Expired Google token rejected beyond the configured skew
       tolerance (fixture token or clock control), with 401 and no session.
 - [ ] **[A]** Issuer variants handled: both documented Google issuer forms

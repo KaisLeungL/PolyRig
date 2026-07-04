@@ -6,11 +6,12 @@ this pack's `overview.md`. Auth-core rules apply throughout.
 
 ## Integration surface
 
-- Default posture: **the Credential Manager-based Google sign-in surface** —
-  the app requests a Google credential through the platform credential
-  manager and receives an ID-token-bearing credential. The legacy
-  GoogleSignIn client is deprecated; treat any code sample using it as a
-  migration source, not a template.
+- Default posture as of this pack's `last_reviewed` date: **the Credential
+  Manager-based Google sign-in surface** — the app requests a Google credential
+  through the platform credential manager and receives an ID-token-bearing
+  credential. Treat legacy GoogleSignIn samples as migration inputs, not
+  templates, and re-check the current official surface through `deps.yaml`
+  before adding dependencies. [Evidence: E001]
 - **Verify the current artifacts via this pack's `deps.yaml` lookups before
   adding dependencies** (credential-manager runtime, its Play-services
   integration, and the Google ID credential library). Record the resolved

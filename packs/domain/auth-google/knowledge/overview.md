@@ -8,8 +8,10 @@ unchanged. This file covers only what is specific to Google as a provider.
 
 ## 1. Which Google integration surface (a decision, not a given)
 
-Google has repeatedly replaced its sign-in client APIs. The landscape splits
-into two eras:
+Google has repeatedly replaced its sign-in client APIs. As of this pack's
+`last_reviewed` date, the landscape split into two eras; always re-check the
+current recommended surface through this pack's `deps.yaml` before making a
+design or dependency decision:
 
 - **Legacy GoogleSignIn-style APIs** (Play-services sign-in client): an
   app-driven "launch the Google account picker" call that historically mixed
@@ -22,7 +24,7 @@ into two eras:
   (bottom-sheet account choice, returning-user auto sign-in) and hands back
   an ID-token-bearing credential. Authentication and authorization are
   **separate API surfaces**: sign-in yields identity only; Google-API scope
-  grants go through a distinct authorization call.
+  grants go through a distinct authorization call. [Evidence: E001, E004]
 
 **The rule: never hardcode an era in a design doc or in code review lore. [Evidence: E001]
 Use whatever surface Google currently recommends, and determine that surface

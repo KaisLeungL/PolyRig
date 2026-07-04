@@ -115,9 +115,12 @@ knowledge/
   pitfalls.md
 references/
   sources.md
-deps.yaml
 verify.md
 ```
+
+Add `deps.yaml` when the pack needs volatile dependency, API surface, package, or
+version lookups. If `deps.yaml` exists, every dependency entry must include
+`evidence: [...]`.
 
 `knowledge/overview.md` contains slow-changing decisions, principles, defaults,
 and decision trees.
