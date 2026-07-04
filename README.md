@@ -87,6 +87,35 @@ Key rules:
 
 Full protocol with worked examples: [docs/pack-protocol.md](docs/pack-protocol.md).
 
+## Authoring packs: `polyrig-pack-author`
+
+`/polyrig` only **consumes** packs. `polyrig-pack-author` is the sibling skill
+that **creates and updates** them — the workflow for teaching PolyRig a new
+stack or business domain, instead of hand-writing `pack.yaml` and Markdown
+against the schema.
+
+Trigger it with `/polyrig-pack-author`, or just ask for it directly. Example
+prompts:
+
+- `/polyrig-pack-author create a stack pack for Next.js` — new stack pack,
+  defaults to `~/.polyrig/packs/stack/nextjs/`.
+- `/polyrig-pack-author create a domain pack for Stripe billing, compatible
+  with backend-fastapi` — new domain pack with `stacks: [backend-fastapi]` and
+  a `knowledge/per-stack/backend-fastapi.md`.
+- `/polyrig-pack-author update packs/stack/android — bump last_reviewed and
+  add a pitfall about predictive back` — update an existing pack in place.
+
+It runs six phases (pack identity → use cases → boundaries → source plan →
+knowledge extraction → review gate): slow-changing decisions go to
+`knowledge/*.md`, volatile facts (versions, API surfaces) go to `deps.yaml` as
+lookup strategies, and every strong rule or dependency lookup must cite a
+stable `[Evidence: E001]`-style id in `references/sources.md`. Before
+reporting a pack `ready`, it runs `scripts/validate-pack.mjs` in an
+independent context plus two fixed reviewer passes (protocol/structure,
+content/safety) — never a self-review in the authoring context.
+
+Full walkthrough with a worked example: [docs/authoring-packs.md](docs/authoring-packs.md).
+
 ## Install
 
 ```sh
@@ -113,7 +142,8 @@ Depth over breadth: focused built-in packs, one end-to-end demo.
   backend-fastapi
 
 Secondary gates: `scripts/validate-pack.mjs` passes on all builtin packs, and
-generated artifacts validate against `schemas/`.
+generated artifacts validate against `schemas/` (checked by
+`scripts/validate-artifacts.mjs`).
 
 ## Roadmap
 

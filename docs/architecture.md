@@ -53,10 +53,18 @@ Produced by the interview into the **target** repository:
 - `docs/verify.md`, `deps.resolved.md`
 - `.polyrig/manifest.json` — the audit chain, with selected-pack checksums that
   include copied `sources.md`
-- `init.plan.md`, `init.sh`
+- `init.plan.md`, `init.sh` — `init.sh` also runs a guarded `git init` (skipped
+  if the target is already a work tree) so the context layer has a repository
+  to enter; it still never commits, installs, or edits build files
 
 Once generated, the target project is self-sufficient: a fresh session with zero
 verbal context can implement features from the on-disk artifacts alone.
+
+`scripts/validate-pack.mjs` (layer 2) and `scripts/validate-artifacts.mjs`
+(layer 2 checking layer 3 output) are the tooling that keeps this promise
+mechanical rather than aspirational: the first validates a pack directory
+before it is ever selected, the second validates `feature_list.json` and
+`.polyrig/manifest.json` against `schemas/` right after generation.
 
 ## Discovery roots and trust model
 

@@ -74,6 +74,31 @@ agent 运行时。
 
 完整协议与完整示例：[docs/pack-protocol.md](docs/pack-protocol.md)。
 
+## 编写 pack：`polyrig-pack-author`
+
+`/polyrig` 只**消费** pack。`polyrig-pack-author` 是它的姐妹 skill，负责**创建和
+维护** pack —— 教会 PolyRig 一个新技术栈或业务领域的工作流，而不是照着 schema
+手写 `pack.yaml` 和 Markdown。
+
+用 `/polyrig-pack-author` 触发，或者直接用自然语言提出需求。示例：
+
+- `/polyrig-pack-author 帮我创建一个 Next.js 的 stack pack` —— 新建 stack 包，
+  默认写入 `~/.polyrig/packs/stack/nextjs/`。
+- `/polyrig-pack-author 创建一个 Stripe 计费的 domain pack，兼容 backend-fastapi`
+  —— 新建 domain 包，`stacks: [backend-fastapi]`，并生成
+  `knowledge/per-stack/backend-fastapi.md`。
+- `/polyrig-pack-author 更新 packs/stack/android —— 刷新 last_reviewed，补充一条
+  关于 predictive back 的坑` —— 就地更新已有的 pack。
+
+它跑六个阶段（pack 身份 → 使用场景 → 边界 → 信息源计划 → 知识提取 → 评审关卡）：
+慢变决策写进 `knowledge/*.md`，易变事实（版本号、API 面）写进 `deps.yaml` 作为查询
+策略，每条强规则或依赖 lookup 都必须在 `references/sources.md` 里引用稳定的
+`[Evidence: E001]` 风格 id。在把 pack 报告为 `ready` 之前，它会在独立上下文里跑
+`scripts/validate-pack.mjs`，再跑两个固定的 reviewer（protocol/structure、
+content/safety）——绝不在编写上下文里自我审查。
+
+完整流程与实操示例：[docs/authoring-packs.md](docs/authoring-packs.md)。
+
 ## 安装
 
 ```sh
@@ -99,7 +124,7 @@ pointer/context 文件。只安装单个平台可用
   per-stack 笔记
 
 次级验收门槛：`scripts/validate-pack.mjs` 在所有内置包上通过；生成的产物能通过
-`schemas/` 校验。
+`schemas/` 校验（由 `scripts/validate-artifacts.mjs` 检查）。
 
 ## 路线图
 

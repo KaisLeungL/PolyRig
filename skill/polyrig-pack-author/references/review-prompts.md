@@ -31,6 +31,9 @@ correctness and structural completeness. Focus on:
 - Evidence Matrix presence, table columns, evidence id format, legal status and
   volatility values, and inline [Evidence: E001] references
 - deps.yaml lookup strategies and evidence arrays
+- every package-runner-invoked tool in verify.md (uv run, uvx, npx, pnpm
+  dlx/exec, yarn dlx, bunx, poetry run, pipx run, pdm run) has a matching
+  deps.yaml entry
 - create/update behavior, write-root selection, draft/ready gate, and validator
   command
 - whether scripts are omitted by default and, if present, are optional and

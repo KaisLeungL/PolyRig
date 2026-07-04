@@ -110,6 +110,13 @@ it does not know which mode your product requires or which trap bit you.
 rule, red line, or recommended default in `overview.md`, `pitfalls.md`, or
 `verify.md` must cite evidence with an inline marker such as `[Evidence: E001]`.
 
+Every tool `verify.md` invokes through a package runner (`uv run`, `uvx`, `npx`,
+`pnpm dlx`/`exec`, `yarn dlx`, `bunx`, `poetry run`, `pipx run`, `pdm run`) must
+have a matching `deps.yaml` entry — see 2.5 and 2.6. System toolchain commands
+(`xcodebuild`, `./gradlew`, `adb`, …) are exempt; the validator only flags
+package-manager-mediated tools, since those are the ones assembly needs to
+version-resolve into `deps.resolved.md`.
+
 ### 2.3.1 references/sources.md — Evidence Matrix
 
 Every pack must carry `references/sources.md` with a Markdown Evidence Matrix:
@@ -177,6 +184,12 @@ indicator while capturing, latency budgets measured, IME switch-mid-dictation
 behavior, no transcript in logs. If your pack `requires` another pack, extend
 that pack's checklist explicitly instead of duplicating it (auth-google shows
 the pattern).
+
+If an **[A]** item runs a tool through a package runner (e.g. `` `uv run
+ruff check .` ``), that tool needs a `deps.yaml` entry (2.5) with matching
+`coordinate` or `lookup.package_candidates` — otherwise the validator flags
+verify.md and deps.yaml as disagreeing, and assembly would never resolve that
+tool's version into the target project's `deps.resolved.md`.
 
 ## 3. The freshness discipline
 
@@ -253,6 +266,10 @@ Violation classes:
   evidence.
 - **deps.yaml** — parse error, or a dependency entry with neither a lookup
   strategy nor a source, or missing/unknown `evidence` ids.
+- **verify.md tool coverage** — a tool invoked in `verify.md` through a package
+  runner (`uv run`, `uvx`, `npx`, `pnpm dlx`/`exec`, `yarn dlx`, `bunx`,
+  `poetry run`, `pipx run`, `pdm run`) with no matching `deps.yaml` coordinate
+  or `lookup.package_candidates` entry. System toolchain commands are exempt.
 - **requires** — a required id resolves in no discovery root.
 
 Exit 0 prints `PASS <id>`; exit 1 lists every specific violation. **A pack
