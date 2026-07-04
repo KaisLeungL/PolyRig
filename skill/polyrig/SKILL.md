@@ -108,6 +108,12 @@ Goal: seed `feature_list.json` with **real entries, not placeholders**. Ask:
 2. Acceptance criteria — at least one concrete, checkable criterion? (propose a
    draft for confirmation)
 
+Steer the first feature toward a **runnable slice**: its automated verification
+must exercise behavior (build, tests against running code, server boot) — not
+restate documentation. A contract- or doc-only feature whose test merely
+re-asserts its own content proves nothing; fold contract definition into the
+feature that implements it instead.
+
 If the feature spans multiple stacks or is too large for one pass, decompose it
 into 2–4 features with `depends_on` ordering and confirm the split. Each feature
 gets: id (F001…), title, status `planned`, priority, depends_on, pack_refs (the
@@ -186,8 +192,10 @@ filling every placeholder from interview answers and removing all `polyrig:` com
 - `docs/verify.md` — the merged P6 route.
 - `deps.resolved.md` — step-a results, one dated entry per dependency.
 - `init.plan.md` first, then `init.sh` — init.sh stays within the template's safe
-  operations (mkdir -p / touch / echo only; no installs, no build-file edits, no
-  remote fetches); everything non-trivial goes into init.plan.md as manual follow-ups.
+  operations (mkdir -p / touch / echo, plus the template's guarded `git init` when
+  the target is not already inside a repository; no installs, no build-file edits,
+  no remote fetches, no commits); everything non-trivial goes into init.plan.md as
+  manual follow-ups — including the first commit, which stays manual.
 
 **d. Write `.polyrig/manifest.json`** conforming to
 `$POLYRIG_ROOT/schemas/manifest.schema.json`. Delete the template's `$comment` key.
@@ -222,13 +230,13 @@ every staleness warning, every unverified dependency. Then instruct the user:
 ## Post-generate self-check (before declaring success)
 
 Running `validate-pack.mjs` is NOT needed here — selected packs were already
-validated. Instead, re-read the two generated JSON artifacts and check them against
-their schemas' required fields:
-- `feature_list.json` vs `$POLYRIG_ROOT/schemas/feature_list.schema.json`
-  (project/version/generated_at/features; per feature: id `F\d{3}`, title, status,
-  priority, acceptance_criteria ≥ 1, verification.manual + verification.automated).
-- `.polyrig/manifest.json` vs `$POLYRIG_ROOT/schemas/manifest.schema.json`
-  (polyrig_version, generated_at date-time, language.interaction/artifacts,
-  selected_packs with all six fields and `sha256:` checksums; no `$comment`).
+validated. Instead validate the two generated JSON artifacts against their schemas:
 
-Fix any violation before reporting success.
+```bash
+node "$POLYRIG_ROOT/scripts/validate-artifacts.mjs" <target>
+```
+
+It checks `feature_list.json` and `.polyrig/manifest.json` against
+`$POLYRIG_ROOT/schemas/`. Fix any violation before reporting success. If the
+script is unavailable (POLYRIG_ROOT could not be resolved), fall back to
+re-reading both files against the schemas' required fields by hand.

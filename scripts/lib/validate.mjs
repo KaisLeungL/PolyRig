@@ -2,10 +2,11 @@
 //
 // Two responsibilities:
 //   1. checkAgainstSchema(): targeted, schema-driven checks for the JSON
-//      Schema subset actually used by schemas/pack.schema.json (type, required,
-//      properties, additionalProperties, enum, pattern, minLength, uniqueItems,
-//      items). NOT a general-purpose JSON Schema engine — deliberately small,
-//      but driven by reading the schema file so schema edits flow through.
+//      Schema subset actually used by the schemas/ files (type, required,
+//      properties, additionalProperties, enum, pattern, minLength, minItems,
+//      uniqueItems, items, local '#/...' $ref, format date/date-time). NOT a
+//      general-purpose JSON Schema engine — deliberately small, but driven by
+//      reading the schema file so schema edits flow through.
 //   2. validatePackDir(): full pack validation = pack.yaml schema checks +
 //      the structural rules from docs/pack-protocol.md + `requires` resolution
 //      against discovery roots.
@@ -47,14 +48,39 @@ function matchesType(v, schemaType) {
   return t === schemaType;
 }
 
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_TIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+
+/** Resolve a local '#/a/b' JSON pointer against the root schema. */
+function resolveRef(root, ref) {
+  if (typeof ref !== 'string' || !ref.startsWith('#/')) return undefined;
+  let node = root;
+  for (const part of ref.slice(2).split('/')) {
+    const key = part.replace(/~1/g, '/').replace(/~0/g, '~');
+    if (node === null || typeof node !== 'object') return undefined;
+    node = node[key];
+  }
+  return node;
+}
+
 /**
  * Validate `value` against the JSON Schema subset in `schema`.
  * Returns an array of violation strings, each prefixed with a JSON-pointer-ish
- * location (e.g. "pack.yaml:/trust/level: ...").
+ * location (e.g. "pack.yaml:/trust/level: ..."). `root` is the document the
+ * schema's local $refs resolve against; callers never pass it explicitly.
  */
-export function checkAgainstSchema(value, schema, where = '') {
+export function checkAgainstSchema(value, schema, where = '', root = schema) {
   const violations = [];
   const at = where === '' ? '(root)' : where;
+
+  if (schema.$ref !== undefined) {
+    const resolved = resolveRef(root, schema.$ref);
+    if (resolved === undefined) {
+      violations.push(`${at}: unresolvable $ref '${schema.$ref}'`);
+      return violations;
+    }
+    return checkAgainstSchema(value, resolved, where, root);
+  }
 
   if (schema.type !== undefined && !matchesType(value, schema.type)) {
     violations.push(`${at}: expected type '${schema.type}', got '${typeName(value)}'`);
@@ -72,6 +98,12 @@ export function checkAgainstSchema(value, schema, where = '') {
     if (schema.minLength !== undefined && value.length < schema.minLength) {
       violations.push(`${at}: string is shorter than minLength ${schema.minLength}`);
     }
+    if (schema.format === 'date' && !DATE_RE.test(value)) {
+      violations.push(`${at}: value ${JSON.stringify(value)} is not a YYYY-MM-DD date`);
+    }
+    if (schema.format === 'date-time' && !DATE_TIME_RE.test(value)) {
+      violations.push(`${at}: value ${JSON.stringify(value)} is not an RFC 3339 date-time`);
+    }
   }
 
   if (Array.isArray(value)) {
@@ -88,7 +120,7 @@ export function checkAgainstSchema(value, schema, where = '') {
     }
     if (schema.items !== undefined) {
       value.forEach((item, idx) => {
-        violations.push(...checkAgainstSchema(item, schema.items, `${where}/${idx}`));
+        violations.push(...checkAgainstSchema(item, schema.items, `${where}/${idx}`, root));
       });
     }
   }
@@ -100,7 +132,7 @@ export function checkAgainstSchema(value, schema, where = '') {
     const props = schema.properties ?? {};
     for (const [key, sub] of Object.entries(value)) {
       if (key in props) {
-        violations.push(...checkAgainstSchema(sub, props[key], `${where}/${key}`));
+        violations.push(...checkAgainstSchema(sub, props[key], `${where}/${key}`, root));
       } else if (schema.additionalProperties === false) {
         violations.push(`${at}: unknown field '${key}' (additionalProperties is false)`);
       }
@@ -310,6 +342,73 @@ function validateEvidenceReferencesInMarkdown(packDir, files, evidence, violatio
 }
 
 // ---------------------------------------------------------------------------
+// verify.md tool coverage
+// ---------------------------------------------------------------------------
+
+// A tool invoked through a package runner in verify.md is a dependency of the
+// verification route. Assembly only resolves versions for deps.yaml entries,
+// so an undeclared tool would never land in the target project's
+// deps.resolved.md — the route would demand a tool nobody version-resolved.
+const PACKAGE_RUNNERS = [
+  { runner: 'uv run', re: /\buv run ([A-Za-z0-9_.-]+)/g },
+  { runner: 'uvx', re: /\buvx ([A-Za-z0-9_.-]+)/g },
+  { runner: 'poetry run', re: /\bpoetry run ([A-Za-z0-9_.-]+)/g },
+  { runner: 'pipx run', re: /\bpipx run ([A-Za-z0-9_.-]+)/g },
+  { runner: 'pdm run', re: /\bpdm run ([A-Za-z0-9_.-]+)/g },
+  { runner: 'npx', re: /\bnpx (?:--?[A-Za-z-]+ )*([A-Za-z0-9@/_.-]+)/g },
+  { runner: 'pnpm dlx', re: /\bpnpm dlx ([A-Za-z0-9@/_.-]+)/g },
+  { runner: 'pnpm exec', re: /\bpnpm exec ([A-Za-z0-9@/_.-]+)/g },
+  { runner: 'yarn dlx', re: /\byarn dlx ([A-Za-z0-9@/_.-]+)/g },
+  { runner: 'bunx', re: /\bbunx ([A-Za-z0-9@/_.-]+)/g },
+];
+
+function normalizePackageName(name) {
+  let n = name.trim();
+  n = n.replace(/\[[^\]]*\]$/, ''); // pip extras: uvicorn[standard] -> uvicorn
+  if (!n.startsWith('@')) n = n.replace(/@.+$/, ''); // npm pin: tool@1 -> tool
+  return n.toLowerCase();
+}
+
+function declaredDependencyNames(deps) {
+  const names = new Set();
+  const entries = Array.isArray(deps?.dependencies) ? deps.dependencies : [];
+  for (const entry of entries) {
+    if (typeName(entry) !== 'object') continue;
+    if (typeof entry.coordinate === 'string' && entry.coordinate.trim() !== '') {
+      names.add(normalizePackageName(entry.coordinate.split(/\s+/)[0]));
+    }
+    const candidates = entry.lookup?.package_candidates;
+    if (Array.isArray(candidates)) {
+      for (const candidate of candidates) {
+        if (typeof candidate === 'string') names.add(normalizePackageName(candidate));
+      }
+    }
+  }
+  return names;
+}
+
+function validateVerifyToolCoverage(verifyPath, hasDepsFile, deps, violations) {
+  if (!isFile(verifyPath)) return;
+  if (hasDepsFile && deps === null) return; // parse error already reported
+  const declared = declaredDependencyNames(deps);
+  const flagged = new Set();
+  const lines = readFileSync(verifyPath, 'utf8').split(/\r?\n/);
+  lines.forEach((line, idx) => {
+    for (const { runner, re } of PACKAGE_RUNNERS) {
+      re.lastIndex = 0;
+      for (const match of line.matchAll(re)) {
+        const tool = normalizePackageName(match[1]);
+        if (declared.has(tool) || flagged.has(tool)) continue;
+        flagged.add(tool);
+        violations.push(hasDepsFile
+          ? `verify.md:${idx + 1}: tool '${tool}' is invoked via '${runner}' but has no deps.yaml entry (assembly cannot resolve its version into deps.resolved.md)`
+          : `verify.md:${idx + 1}: tool '${tool}' is invoked via '${runner}' but the pack has no deps.yaml`);
+      }
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Full pack validation
 // ---------------------------------------------------------------------------
 
@@ -409,8 +508,9 @@ export function validatePackDir(packDir, { roots = [join(REPO_ROOT, 'packs')] } 
 
   // --- deps.yaml: optional, but must parse and carry lookup strategies ------
   const depsPath = join(dir, 'deps.yaml');
-  if (isFile(depsPath)) {
-    let deps = null;
+  const hasDepsFile = isFile(depsPath);
+  let deps = null;
+  if (hasDepsFile) {
     try {
       deps = parseYamlFile(depsPath);
     } catch (err) {
@@ -455,6 +555,9 @@ export function validatePackDir(packDir, { roots = [join(REPO_ROOT, 'packs')] } 
       }
     }
   }
+
+  // --- verify.md tools must be resolvable at assembly time ------------------
+  validateVerifyToolCoverage(verifyPath, hasDepsFile, deps, violations);
 
   // --- requires resolution ---------------------------------------------------
   if (meta && Array.isArray(meta.requires)) {

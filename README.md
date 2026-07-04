@@ -102,9 +102,10 @@ install one target only, use
 
 ## v0.1 scope — golden path
 
-Depth over breadth: four built-in packs, one end-to-end demo.
+Depth over breadth: focused built-in packs, one end-to-end demo.
 
 - `stack/android`
+- `stack/ios`
 - `stack/backend-fastapi`
 - `domain/auth-core` — shared OAuth/OIDC architecture, token/session handling,
   CSRF/nonce/state, secure storage principles
@@ -119,7 +120,7 @@ generated artifacts validate against `schemas/`.
 | Version | Scope |
 |---|---|
 | v0.2 | `stack/web-nextjs`, auth-google web notes |
-| v0.3 | `stack/ios`, `domain/auth-apple` |
+| v0.3 | `domain/auth-apple` |
 | v0.4 | `domain/auth-wechat` (CN-ecosystem specifics) |
 | later | `polyrig-update` upgrade command, remote packs |
 

@@ -83,6 +83,7 @@ polyrig/
     stack/
       android/
       backend-fastapi/
+      ios/
     domain/
       auth-core/
       auth-google/
@@ -95,6 +96,7 @@ polyrig/
   scripts/                  # zero-dependency Node (.mjs); no workspace toolchain
     link-skill.mjs          # install PolyRig skills into supported agent platforms
     validate-pack.mjs       # validate a pack dir against pack.schema.json
+    validate-artifacts.mjs  # validate a target project's generated JSON artifacts
     build-pack-index.mjs    # scan pack roots, emit discovery index
     doctor.mjs              # env & install sanity check
 
@@ -220,7 +222,7 @@ switch point is stated in SKILL.md.
 | `deps.resolved.md` | dated, sourced, confidence-rated online verification results |
 | `.polyrig/manifest.json` | audit chain: polyrig_version, generated_at, language, selected_packs (id, version, source, last_reviewed, copied_to, checksum), overrides |
 | `init.plan.md` | human-reviewable initialization plan (anything non-trivial goes here) |
-| `init.sh` | minimal safe script: `set -euo pipefail`; creates context dirs/files only; never bulk-installs deps, never edits build files, never writes business code, never fetches remote scripts; header says "Review init.plan.md before running" |
+| `init.sh` | minimal safe script: `set -euo pipefail`; creates context dirs/files, runs a guarded `git init` when the target is not already inside a repository, and seeds a minimal `.gitignore` (`.env`) if absent; never bulk-installs deps, never edits build files, never writes business code, never fetches remote scripts, never commits (the first commit is a manual follow-up in init.plan.md); header says "Review init.plan.md before running" |
 
 ### feature_list.json state machine
 
@@ -248,9 +250,10 @@ passed or manual verification is explicitly documented.
 
 ## 6. v0.1 scope — golden path
 
-Built-in packs (4, depth over breadth):
+Built-in packs (5, depth over breadth):
 
 - `stack/android`
+- `stack/ios`
 - `stack/backend-fastapi`
 - `domain/auth-core` (shared OAuth/OIDC architecture, token/session handling, CSRF/nonce/state, secure storage principles)
 - `domain/auth-google` (requires auth-core; per-stack notes for android + backend-fastapi)
@@ -258,7 +261,7 @@ Built-in packs (4, depth over breadth):
 Deferred by roadmap:
 
 - v0.2 — `stack/web-nextjs`, auth-google web notes
-- v0.3 — `stack/ios`, `domain/auth-apple`
+- v0.3 — `domain/auth-apple`
 - v0.4 — `domain/auth-wechat` (CN-ecosystem specifics)
 - later — `polyrig-update` upgrade command, remote packs
 
@@ -273,7 +276,8 @@ One real cold-start, full chain:
    through to **passing verification**.
 
 Secondary gates: `validate-pack.mjs` passes on all builtin packs;
-generated artifacts validate against `schemas/`.
+generated artifacts validate against `schemas/` (checked by
+`validate-artifacts.mjs`).
 
 This demo is the core narrative of the README.
 

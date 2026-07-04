@@ -88,9 +88,10 @@ pointer/context 文件。只安装单个平台可用
 
 ## v0.1 范围 —— 黄金路径
 
-深度优先于广度：四个内置包，一个端到端演示。
+深度优先于广度：聚焦的一组内置包，一个端到端演示。
 
 - `stack/android`
+- `stack/ios`
 - `stack/backend-fastapi`
 - `domain/auth-core` —— 共享的 OAuth/OIDC 架构、token/会话处理、
   CSRF/nonce/state、安全存储原则
@@ -105,7 +106,7 @@ pointer/context 文件。只安装单个平台可用
 | 版本 | 范围 |
 |---|---|
 | v0.2 | `stack/web-nextjs`、auth-google 的 web 笔记 |
-| v0.3 | `stack/ios`、`domain/auth-apple` |
+| v0.3 | `domain/auth-apple` |
 | v0.4 | `domain/auth-wechat`（中国生态特有事项） |
 | 之后 | `polyrig-update` 升级命令、远程包 |
 

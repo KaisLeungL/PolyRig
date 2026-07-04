@@ -131,7 +131,12 @@ to avoid.
 `deps.yaml` contains volatile lookup strategies. Every dependency entry needs an
 `evidence` array.
 
-`verify.md` contains concrete automated/manual completion checks.
+`verify.md` contains concrete automated/manual completion checks. Every tool it
+invokes through a package runner (`uv run`, `uvx`, `poetry run`, `pipx run`,
+`pdm run`, `npx`, `pnpm dlx`/`exec`, `yarn dlx`, `bunx`) must have a `deps.yaml`
+entry so assembly can resolve its version into the target project's
+`deps.resolved.md` — `validate-pack.mjs` enforces this. System toolchain
+commands (`xcodebuild`, `./gradlew`, `adb`, …) are exempt.
 
 `references/sources.md` contains the Evidence Matrix.
 
@@ -173,7 +178,11 @@ support strong rules only with `inferred` evidence, and never support them with
 
 Always write a draft before declaring ready.
 
-Run the validator:
+Start the independent verification gate. The implementing agent must not verify
+its own pack in the same context when subagents or fresh independent sessions are
+available.
+
+Assign an independent verification context to run the validator:
 
 ```bash
 node scripts/validate-pack.mjs <pack-dir>
@@ -184,11 +193,27 @@ Run two reviews using `references/review-prompts.md`:
 1. Protocol / structure reviewer
 2. Content / safety reviewer
 
+The verification and review gate is an automated phase of
+`polyrig-pack-author`, not a handoff to the user. After writing the draft, the
+acting agent must start an independent validation context and then the two
+reviews when independent contexts are available, preferably as subagents. A
+self-validation or self-review in the implementation context does not satisfy
+the gate.
+
+Only defer the gate when no independent validation/reviewer mechanism is
+available or the user explicitly asks to stop before review. In that case,
+report the pack as `draft written`, say exactly why the gate was not run, and
+give the command and two fixed prompts needed to resume. Do not describe the pack
+as `ready`, `verified`, or complete.
+
 Ready criteria:
 
-- validator exits 0
+- validator exits 0 in an independent verification context
 - protocol / structure reviewer has no blocking issues
 - content / safety reviewer has no blocking issues
 
 If any criterion fails, report the pack as draft only, list blocking issues, and
 recommend the next fixes.
+
+`doctor.mjs` remains a deterministic health check. It may validate pack shape
+and installation links, but it does not replace the two-review ready gate.

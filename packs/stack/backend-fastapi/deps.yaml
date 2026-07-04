@@ -80,6 +80,28 @@ dependencies:
       package_candidates: [httpx]
     notes: Check how the current version wires an in-process ASGI app into a test client (transport API has churned) before writing test fixtures.
 
+  - coordinate: ruff (PyPI)
+    purpose: Linter and formatter driving the lint/format verification route
+    evidence: [E016]
+    lookup:
+      query: "ruff latest version release notes"
+      official_sources:
+        - https://docs.astral.sh/ruff/
+        - https://pypi.org/project/ruff/
+      package_candidates: [ruff]
+    notes: Pin as a dev-group dependency. Rule changes go in pyproject.toml with a reason — never silence rules inline to make the route pass.
+
+  - coordinate: mypy (PyPI)
+    purpose: Static type checker for the type-check verification route
+    evidence: [E017]
+    lookup:
+      query: "mypy latest version release notes"
+      official_sources:
+        - https://mypy.readthedocs.io/
+        - https://pypi.org/project/mypy/
+      package_candidates: [mypy, pyright]
+    notes: Pick ONE checker at project start and wire it into pyproject.toml — default mypy, pyright if the team is editor-first; never run both.
+
   - coordinate: pytest (PyPI)
     purpose: Test runner
     evidence: [E108]

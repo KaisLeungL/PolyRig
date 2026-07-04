@@ -247,7 +247,7 @@
         "Evidence Matrix is a formal pack validation requirement: references/sources.md exists, ids are unique E### values, legal statuses/volatility are enforced, Markdown [Evidence: E001] references resolve, strong rules require source-backed or user-provided evidence, and deps.yaml entries require evidence arrays",
         "All four builtin packs are minimally migrated with references/sources.md, evidence markers, and deps.yaml evidence where applicable",
         "The /polyrig skill copies pack sources.md into generated docs/stacks|domains and includes copied sources in checksum guidance",
-        "A new skill/polyrig-pack-author exists with six-phase guided authoring, create/update behavior, web-search/source discipline, draft/ready gate, fixed dual subagent review prompts, and pack templates",
+        "A new skill/polyrig-pack-author exists with six-phase guided authoring, create/update behavior, web-search/source discipline, automated draft/ready gate, independent subagent validation, fixed dual subagent review prompts, and pack templates",
         "scripts/link-skill.mjs and doctor support installing/checking both polyrig and polyrig-pack-author",
         "README, SPEC, pack protocol, architecture, and authoring guide document Evidence Matrix and pack-authoring behavior"
       ],
@@ -279,7 +279,131 @@
         "docs/plans/2026-07-04-polyrig-pack-author-spec.md",
         "docs/plans/2026-07-04-polyrig-pack-author-implementation.md"
       ],
-      "notes": "Implementation used subagents for validator, skill, /polyrig copy contract, installation, and each builtin pack migration. Final dual review is required before marking verified."
+      "notes": "Implementation used subagents for validator, skill, /polyrig copy contract, installation, and each builtin pack migration. The skill now makes validation plus the dual review gate an automated independent phase when subagent or fresh-session contexts are available; final dual review is still required before marking verified."
+    },
+    {
+      "id": "F013",
+      "title": "Pack: stack/ios",
+      "status": "verified",
+      "priority": "p1",
+      "depends_on": ["F002", "F003", "F012"],
+      "pack_refs": ["stack/ios"],
+      "acceptance_criteria": [
+        "pack.yaml declares id: stack/ios, type: stack, provides: [ios-app], and builtin trust posture",
+        "knowledge/overview.md covers Xcode project shape, SwiftUI/UIKit decisions, state ownership, Swift concurrency, lifecycle, dependencies, privacy, signing, and distribution as stable guidance",
+        "knowledge/pitfalls.md captures iOS-specific red lines and failure modes for signing secrets, privacy manifests, sensitive storage, SwiftUI identity, MainActor/callbacks, release builds, physical-device checks, and App Review",
+        "deps.yaml routes volatile Xcode, Swift, SwiftUI/UIKit, XCTest, SwiftPM, privacy manifest, signing, and distribution lookups to official sources",
+        "verify.md defines build, test, UI test, static/project checks, simulator/device smoke checks, privacy/storage review, and release-style validation routes",
+        "references/sources.md contains an Evidence Matrix and every strong rule / deps entry cites evidence",
+        "passes scripts/validate-pack.mjs"
+      ],
+      "verification": {
+        "manual": [
+          "Author self-review against official Apple, Swift, and OWASP sources",
+          "Protocol / structure reviewer approved with no blocking issues",
+          "Content / safety reviewer approved with non-blocking issues and no blockers"
+        ],
+        "automated": ["node scripts/validate-pack.mjs packs/stack/ios"]
+      },
+      "files_expected": [
+        "packs/stack/ios/pack.yaml",
+        "packs/stack/ios/knowledge/overview.md",
+        "packs/stack/ios/knowledge/pitfalls.md",
+        "packs/stack/ios/deps.yaml",
+        "packs/stack/ios/verify.md",
+        "packs/stack/ios/references/sources.md"
+      ],
+      "notes": "Ready gate completed: validate-pack passed; protocol reviewer approved; content/safety reviewer approved with non-blocking evidence-attribution suggestions and no blockers."
+    },
+    {
+      "id": "F014",
+      "title": "Pack lint: verify.md tool coverage against deps.yaml",
+      "status": "verified",
+      "priority": "p0",
+      "depends_on": ["F003"],
+      "pack_refs": [],
+      "acceptance_criteria": [
+        "validate-pack.mjs flags any tool invoked in verify.md through a package runner (uv run, uvx, poetry run, pipx run, pdm run, npx, pnpm dlx/exec, yarn dlx, bunx) that has no matching deps.yaml coordinate or package_candidates entry",
+        "System toolchain commands (xcodebuild, ./gradlew, adb) are not flagged",
+        "Each missing tool is reported once per verify.md with the line of first use",
+        "packs/stack/backend-fastapi declares ruff and mypy in deps.yaml so its verify routes resolve at assembly time",
+        "All builtin packs pass validate-pack.mjs with the lint active"
+      ],
+      "verification": {
+        "manual": [
+          "Review that the lint messages point at the assembly-time consequence (missing deps.resolved.md entry), not just the missing declaration"
+        ],
+        "automated": [
+          "node scripts/test-validate-pack-verify-tools.mjs",
+          "node scripts/test-validate-pack-evidence.mjs",
+          "node scripts/validate-pack.mjs packs/stack/backend-fastapi"
+        ]
+      },
+      "files_expected": [
+        "scripts/lib/validate.mjs",
+        "scripts/test-validate-pack-verify-tools.mjs",
+        "packs/stack/backend-fastapi/deps.yaml",
+        "packs/stack/backend-fastapi/references/sources.md",
+        "docs/pack-protocol.md",
+        "skill/polyrig-pack-author/references/pack-authoring-contract.md"
+      ],
+      "notes": "Root cause found by the TinyHabit Sync cold-start evaluation: docs/verify.md demanded ruff/mypy while deps.resolved.md never resolved them, because the pack's verify.md and deps.yaml disagreed. 2026-07-04: verified — test-validate-pack-verify-tools and test-validate-pack-evidence pass; lint caught ruff/mypy in backend-fastapi before the deps.yaml fix and all five builtin packs pass after it."
+    },
+    {
+      "id": "F015",
+      "title": "git init in the generated init flow",
+      "status": "verified",
+      "priority": "p0",
+      "depends_on": ["F008", "F009"],
+      "pack_refs": [],
+      "acceptance_criteria": [
+        "templates/init.sh runs a guarded git init when the target is not already inside a git work tree, and seeds a minimal .gitignore (.env) if absent",
+        "init.sh still never installs packages, edits build files, fetches remotely, writes business code, or commits",
+        "templates/init.plan.md lists the git repo and .gitignore under created items and carries the first commit as a manual follow-up",
+        "SKILL.md's safe-operations contract and SPEC.md's init.sh row both include the guarded git init"
+      ],
+      "verification": {
+        "manual": [
+          "Instantiate the template in a scratch directory outside any repo, run it, and confirm git init runs; run it again inside a repo and confirm git init is skipped and no commit is made"
+        ],
+        "automated": ["bash -n skill/polyrig/templates/init.sh"]
+      },
+      "files_expected": [
+        "skill/polyrig/templates/init.sh",
+        "skill/polyrig/templates/init.plan.md",
+        "skill/polyrig/SKILL.md",
+        "SPEC.md"
+      ],
+      "notes": "Root cause found by the TinyHabit Sync cold-start evaluation: the generated project was never a git repository, contradicting the core promise that the context layer enters git and travels with the repo. 2026-07-04: verified — bash -n passes; manual route executed in a scratch dir: outside any repo the instantiated script created a repo on branch main with .gitignore=.env and zero commits; nested inside an existing repo git init was skipped and the parent .gitignore was untouched."
+    },
+    {
+      "id": "F016",
+      "title": "Artifact validation tooling: validate-artifacts.mjs",
+      "status": "verified",
+      "priority": "p1",
+      "depends_on": ["F002", "F003"],
+      "pack_refs": [],
+      "acceptance_criteria": [
+        "scripts/validate-artifacts.mjs validates a target project's feature_list.json and .polyrig/manifest.json against schemas/ and exits non-zero on any violation",
+        "The shared subset validator resolves local #/$defs $refs and checks date / date-time formats so the feature and manifest schemas are fully applied",
+        "SKILL.md's post-generate self-check runs the script instead of asking the agent to re-read schemas by hand",
+        "The script runs on bare node with no dependencies"
+      ],
+      "verification": {
+        "manual": [
+          "Run the script against a PolyRig-generated project and confirm both artifacts PASS"
+        ],
+        "automated": ["node scripts/test-validate-artifacts.mjs"]
+      },
+      "files_expected": [
+        "scripts/validate-artifacts.mjs",
+        "scripts/test-validate-artifacts.mjs",
+        "scripts/lib/validate.mjs",
+        "skill/polyrig/SKILL.md",
+        "docs/pack-protocol.md",
+        "SPEC.md"
+      ],
+      "notes": "Closes the v0.1 secondary gate 'generated artifacts validate against schemas/', which previously had no tooling behind it. 2026-07-04: verified — test-validate-artifacts passes; manual route executed against the TinyHabit Sync test project: both artifacts PASS."
     }
   ]
 }

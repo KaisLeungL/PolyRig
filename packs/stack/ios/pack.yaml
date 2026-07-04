@@ -1,0 +1,13 @@
+id: stack/ios
+type: stack
+version: 0.1.0
+last_reviewed: 2026-07-04
+summary: iOS app stack conventions — Xcode project shape, Swift/SwiftUI/UIKit decisions, concurrency, privacy, signing, testing, and release verification
+requires: []
+conflicts: []
+provides: [ios-app]
+stacks: []
+trust:
+  level: builtin
+  scripts_enabled_by_default: false
+  requires_confirmation: false

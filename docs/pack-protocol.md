@@ -40,7 +40,13 @@ Structural rules:
 - `pack.yaml`, `verify.md`, a **non-empty** `knowledge/` directory, and
   `references/sources.md` are required. A pack missing any of these fails
   `scripts/validate-pack.mjs`.
-- `deps.yaml` and `scripts/` are optional.
+- `deps.yaml` and `scripts/` are optional. However, any tool that `verify.md`
+  invokes through a package runner (`uv run`, `uvx`, `poetry run`, `pipx run`,
+  `pdm run`, `npx`, `pnpm dlx`/`exec`, `yarn dlx`, `bunx`) **must** have a
+  `deps.yaml` entry — assembly only resolves versions for declared
+  dependencies, so an undeclared tool would never reach the target project's
+  `deps.resolved.md`. System toolchain commands (`xcodebuild`, `./gradlew`,
+  `adb`, …) are exempt.
 - A **domain pack that declares `stacks`** in its `pack.yaml` should provide a
   matching `knowledge/per-stack/<stack>.md` for each declared stack short-name.
 - Knowledge is Markdown prose. Nothing in `knowledge/` is executed; it is copied
@@ -222,8 +228,11 @@ repository, so its scripts never run by default — regardless of what its
 
 - `node scripts/validate-pack.mjs <pack-dir>` validates `pack.yaml` against
   `schemas/pack.schema.json` and checks the structural rules above (required
-  files, Evidence Matrix shape and references, per-stack coverage, resolvable
-  `requires`).
+  files, Evidence Matrix shape and references, per-stack coverage, verify.md
+  tool coverage against `deps.yaml`, resolvable `requires`).
+- `node scripts/validate-artifacts.mjs <target-dir>` validates a generated
+  target project's `feature_list.json` and `.polyrig/manifest.json` against
+  `schemas/` — the tooling behind the post-generate self-check.
 - `node scripts/build-pack-index.mjs` scans the three discovery roots, applies
   override precedence, and emits an index including trust source and script
   presence per pack.

@@ -1,0 +1,108 @@
+# packs/stack/ios/deps.yaml
+#
+# Dependency coordinates + lookup strategy. NO pinned versions live here or in
+# knowledge prose. At assembly time the agent executes each lookup, verifies
+# the current version and compatibility online, and records the result in the
+# target project's deps.resolved.md (dated, sourced, confidence-rated).
+version_policy: verify_latest_before_use
+dependencies:
+  - coordinate: Xcode + iOS SDK + Simulator runtime
+    stack: ios
+    purpose: Apple toolchain for building, testing, archiving, and running iOS apps
+    evidence: [E001, E006, E010]
+    lookup:
+      query: "Xcode latest stable release notes iOS SDK simulator runtime Apple Developer"
+      official_sources:
+        - https://developer.apple.com/xcode/
+        - https://developer.apple.com/documentation/xcode-release-notes
+        - https://developer.apple.com/documentation/xcode
+    notes: >
+      Resolve the Xcode version, bundled SDK, simulator runtime availability,
+      and minimum macOS requirement together. Record the exact toolchain used
+      for validation in deps.resolved.md.
+
+  - coordinate: Swift language mode / compiler settings
+    stack: ios
+    purpose: Swift compiler behavior, language mode, concurrency diagnostics, and Sendable checks
+    evidence: [E003]
+    lookup:
+      query: "Swift latest release concurrency language mode Sendable diagnostics official"
+      official_sources:
+        - https://www.swift.org/download/
+        - https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency/
+        - https://docs.swift.org/compiler/documentation/diagnostics/
+    notes: >
+      Check the project's selected Swift language mode and strict-concurrency
+      diagnostics before changing async code. Do not assume compiler warnings
+      or Sendable diagnostics match another Xcode version.
+
+  - coordinate: SwiftUI / UIKit / Observation API surface
+    stack: ios
+    purpose: UI framework selection, state model APIs, lifecycle hooks, and interoperability boundaries
+    evidence: [E002, E004]
+    lookup:
+      query: "SwiftUI model data Observation latest documentation UIKit scenes lifecycle Apple"
+      official_sources:
+        - https://developer.apple.com/documentation/swiftui/model-data
+        - https://developer.apple.com/documentation/uikit/app_and_environment/scenes
+        - https://developer.apple.com/design/human-interface-guidelines
+    notes: >
+      Verify the current API names and deployment-target availability before
+      using new SwiftUI, Observation, navigation, or lifecycle APIs.
+
+  - coordinate: XCTest / XCUITest / xcodebuild test plans
+    stack: ios
+    purpose: Unit, integration, performance, and UI automation routes for iOS features
+    evidence: [E010]
+    lookup:
+      query: "XCTest XCUITest xcodebuild test plans latest official Apple"
+      official_sources:
+        - https://developer.apple.com/documentation/xctest
+        - https://developer.apple.com/documentation/xcode/running-tests-and-interpreting-results
+        - https://developer.apple.com/documentation/xcode/adding-tests-to-your-xcode-project
+    notes: >
+      Confirm the active scheme, destination, test plan, and simulator/device
+      availability before declaring a route unavailable.
+
+  - coordinate: Swift Package Manager dependencies
+    stack: ios
+    purpose: Source dependency resolution and package graph management
+    evidence: [E008]
+    lookup:
+      query: "Swift Package Manager official documentation package dependency version requirement"
+      official_sources:
+        - https://docs.swift.org/swiftpm/documentation/packagemanagerdocs/
+        - https://developer.apple.com/documentation/xcode/adding-package-dependencies-to-your-app
+    notes: >
+      Resolve package source, version requirement, platform support, license,
+      and whether the dependency brings privacy manifest or binary artifacts.
+
+  - coordinate: App privacy manifest / required-reason APIs
+    stack: ios
+    purpose: Privacy declarations for app code and third-party SDKs before App Store submission
+    evidence: [E007]
+    lookup:
+      query: "Apple privacy manifest required reason APIs latest App Store Connect"
+      official_sources:
+        - https://developer.apple.com/documentation/bundleresources/privacy-manifest-files
+        - https://developer.apple.com/documentation/bundleresources/describing-use-of-required-reason-api
+        - https://developer.apple.com/support/third-party-SDK-requirements/
+    notes: >
+      Check the current required-reason API list, SDK privacy requirements, and
+      Xcode privacy report behavior before uploading a new build.
+
+  - coordinate: Apple signing assets and App Store distribution
+    stack: ios
+    purpose: Bundle IDs, capabilities, entitlements, provisioning profiles, archives, TestFlight, and App Store release path
+    evidence: [E006, E009, E011]
+    lookup:
+      query: "Apple Xcode signing capabilities provisioning distribution TestFlight App Store review latest"
+      official_sources:
+        - https://developer.apple.com/documentation/xcode/distributing-your-app-for-beta-testing-and-releases
+        - https://developer.apple.com/documentation/xcode/adding-capabilities-to-your-app
+        - https://developer.apple.com/documentation/bundleresources/entitlements
+        - https://developer.apple.com/app-store/review/guidelines/
+    notes: >
+      Resolve team ID, bundle ID, capabilities, entitlements, profile type,
+      archive/export method, and App Store policy constraints for the target
+      distribution channel.

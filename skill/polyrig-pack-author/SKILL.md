@@ -63,22 +63,29 @@ Every strong rule or red line needs an inline marker such as
 
 ### 6. Review gate
 
-Write the pack as a draft first. Run:
+Write the pack as a draft first. Then start the independent verification gate.
+Do not validate your own pack in the same implementation context when subagents
+or fresh independent sessions are available.
+
+Assign an independent verification context to run:
 
 ```bash
 node scripts/validate-pack.mjs <pack-dir>
 ```
 
-Then route two independent reviews using the fixed prompts. Prefer two
-subagents or fresh independent sessions. If independent review is unavailable,
-state that limitation, keep the result as `draft written`, and do not report
-`ready`.
+Then automatically route two independent reviews using the fixed prompts. This
+is part of the skill flow, not a manual follow-up for the user. If subagents or
+fresh independent sessions are available, start them yourself after independent
+validation passes. Only defer when independent validation/review is genuinely
+unavailable or the user explicitly asks to stop; state that limitation, keep the
+result as `draft written`, and do not report `ready`.
 
 1. Protocol / structure reviewer: pack protocol, directory shape, Evidence
    Matrix, references, validation readiness.
 2. Content / safety reviewer: stale facts, unsupported claims, safety/privacy
    red lines, misleading guidance.
 
-Report `ready` only when validation passes and both reviews have no blocking
-issues. Otherwise report `draft written`, list blocking issues, and keep the
-draft in place.
+Report `ready` only when validation was run by an independent context, validation
+passes, and both reviews have no blocking issues. Otherwise report
+`draft written`, list blocking issues or the missing independent capability, and
+keep the draft in place.
