@@ -13,7 +13,7 @@ every identity provider; provider packs add only provider-specific variants.
 - **The rule**: generate `state` as a fresh cryptographically random value per
   authorization request; bind it to the browser session (server-side or in a
   short-lived, scoped cookie); on callback, compare with constant-time
-  equality, reject on any mismatch or absence, and make it single-use.
+  equality, reject on any mismatch or absence, and make it single-use. [Evidence: E001]
 
 ## 2. Nonce and ID-token replay
 
@@ -24,7 +24,7 @@ every identity provider; provider packs add only provider-specific variants.
 - **The rule**: send a random `nonce` in the authorization request, verify the
   ID token echoes it, and mark it consumed. `state` protects the callback
   (CSRF); `nonce` protects the token (replay). They are not interchangeable —
-  use both, generated independently.
+  use both, generated independently. [Evidence: E002]
 
 ## 3. PKCE verifier mishandling
 
@@ -34,7 +34,7 @@ every identity provider; provider packs add only provider-specific variants.
   randomness, stored where other apps/scripts can read it, or — worst — the
   plain method was used so the challenge *is* the verifier.
 - **The rule**: fresh high-entropy verifier per flow, S256 challenge method,
-  verifier kept in flow-local storage and discarded after the exchange.
+  verifier kept in flow-local storage and discarded after the exchange. [Evidence: E001]
 
 ## 4. Redirect URI validation
 
@@ -45,9 +45,9 @@ every identity provider; provider packs add only provider-specific variants.
   callback itself forwards to a `?next=` target taken verbatim from the
   request.
 - **The rule**: register full redirect URIs and match **exactly** (scheme,
-  host, port, path). Never validate by prefix or pattern. Any post-login
+  host, port, path). Never validate by prefix or pattern. [Evidence: E001] Any post-login
   `next`/`return_to` parameter is validated against an allowlist of your own
-  paths — never a full URL taken from the request.
+  paths — never a full URL taken from the request. [Evidence: E001]
 
 ## 5. Token leakage vectors
 
@@ -57,10 +57,10 @@ every identity provider; provider packs add only provider-specific variants.
   leak via referrer), or a "log the whole request object" / global error
   handler serialized headers, cookies, and bodies wholesale into logs and
   error messages.
-- **The rule**: tokens travel in headers, POST bodies, or cookies — never in
+- **The rule**: tokens travel in headers, POST bodies, or cookies — never in [Evidence: E006]
   URLs. Redact `Authorization`, cookies, and token-shaped fields at the logging
   layer (structured logging with a denylist), not by per-call-site discipline.
-  Error responses never echo the credential that failed.
+  Error responses never echo the credential that failed. [Evidence: E006]
 
 ## 6. Expiry, clock skew, and validity-window traps
 
@@ -71,7 +71,7 @@ every identity provider; provider packs add only provider-specific variants.
   raw equality against local time, or "fixed" with an unbounded fudge factor.
 - **The rule**: run NTP on verifiers, allow a small bounded skew tolerance
   (seconds to a very few minutes), and treat validation failure as failure —
-  never widen the window to make an error go away.
+  never widen the window to make an error go away. [Evidence: E002]
 
 ## 7. Audience-check omission
 
@@ -79,9 +79,9 @@ every identity provider; provider packs add only provider-specific variants.
   provider) is accepted by your backend — any app's users can impersonate into
   yours with a token they obtained lawfully elsewhere.
 - **Why**: signature and expiry pass (the token is genuine); only `aud` says
-  who the token was minted *for*, and it was never checked.
+  who the token was minted *for*, and it was never checked. [Evidence: E002]
 - **The rule**: always verify `aud` equals your own client/application id
-  exactly. This check is as mandatory as the signature.
+  exactly. This check is as mandatory as the signature. [Evidence: E002]
 
 ## 8. Issuer-string variations
 
@@ -90,7 +90,7 @@ every identity provider; provider packs add only provider-specific variants.
 - **Why**: some providers emit more than one legitimate issuer form (e.g. with
   and without a scheme prefix), and substring matching is not validation.
 - **The rule**: compare `iss` by exact match against an explicit allowlist of
-  the issuer strings you accept. Never substring/regex-match the issuer.
+  the issuer strings you accept. Never substring/regex-match the issuer. [Evidence: E002]
 
 ## 9. Verifying the signature but not the claims — and `alg` confusion
 
@@ -102,7 +102,7 @@ every identity provider; provider packs add only provider-specific variants.
   part of "signature verification" when the library does not do them by
   default.
 - **The rule**: pin the accepted algorithm(s) in verifier configuration; reject
-  `none` unconditionally; never let the token header select the algorithm or
+  `none` unconditionally; never let the token header select the algorithm or [Evidence: E008]
   key type. Then verify claims explicitly — signature proves *who signed*,
   claims prove *for whom, for what, and until when*.
 
@@ -115,7 +115,7 @@ every identity provider; provider packs add only provider-specific variants.
   "eternal cache" ignore that.
 - **The rule**: cache the key set with a bounded TTL; on a token whose `kid`
   is not in cache, refresh once (rate-limited) and retry verification; if the
-  key is still unknown, reject. Never accept an unverifiable token because the
+  key is still unknown, reject. Never accept an unverifiable token because the [Evidence: E009]
   key fetch failed.
 
 ## 11. Logout that revokes nothing
@@ -127,7 +127,7 @@ every identity provider; provider packs add only provider-specific variants.
 - **The rule**: define logout as server-side invalidation — kill the session
   record and/or revoke the refresh-token family — then clear the client copy.
   Document what logout does and does not revoke (self-contained access tokens
-  may remain valid until expiry: keep them short, and say so in the design).
+  may remain valid until expiry: keep them short, and say so in the design). [Evidence: E005]
 
 ## 12. Race conditions in account auto-provisioning
 
@@ -138,5 +138,5 @@ every identity provider; provider packs add only provider-specific variants.
   atomicity — both requests see absent and both insert.
 - **The rule**: enforce a **unique constraint on (iss, sub)** at the database
   level and provision idempotently (upsert, or catch the unique violation and
-  re-read). The constraint is the guarantee; application-level checks are only
+  re-read). [Evidence: E010] The constraint is the guarantee; application-level checks are only
   an optimization.

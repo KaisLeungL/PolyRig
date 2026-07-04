@@ -1,10 +1,10 @@
 # Auth verification checklist (provider-agnostic)
 
 Run after implementing **any** authentication feature built on this pack.
-Provider packs extend this list; they do not replace it.
+Provider packs extend this list rather than replacing it.
 
 Legend: **[A]** automated (say what kind of test), **[M]** manual/documented
-inspection. Every item must be checked; record outcomes in the feature's
+inspection. Every item must be checked; record outcomes in the feature's [Evidence: E011]
 `verification` notes before setting it `verified`.
 
 ## 1. Happy path
@@ -21,7 +21,7 @@ inspection. Every item must be checked; record outcomes in the feature's
 ## 2. Failure states (negative tests — all automated)
 
 Use unit/integration tests with forged or fixture tokens against the backend's
-verification path. Each case must be **rejected** and must not create a session:
+verification path. Each case must be **rejected** and must not create a session: [Evidence: E002, E008]
 
 - [ ] **[A]** Expired token (`exp` in the past, beyond skew tolerance).
 - [ ] **[A]** Wrong-audience token (valid signature, `aud` = a different
@@ -34,7 +34,7 @@ verification path. Each case must be **rejected** and must not create a session:
       endpoint.)
 - [ ] **[A]** Replayed `nonce`: the same ID token / nonce presented twice —
       second attempt rejected. (Integration test.)
-- [ ] **[A]** Rejection responses do not echo the presented token or secrets.
+- [ ] **[A]** Rejection responses do not echo the presented token or secrets. [Evidence: E006]
       (Assert on response body in the tests above.)
 
 ## 3. Persistence and refresh
