@@ -1,0 +1,239 @@
+{
+  "$comment": "PolyRig v0.1 implementation plan-as-state. States: planned | in_progress | blocked | implemented | verified | rejected. Rules: update after every implementation attempt; never set 'verified' unless verification passed or manual verification is documented in notes.",
+  "project": "PolyRig",
+  "version": "0.1.0",
+  "generated_at": "2026-07-04",
+  "features": [
+    {
+      "id": "F001",
+      "title": "Repository skeleton and bilingual README",
+      "status": "planned",
+      "priority": "p0",
+      "depends_on": [],
+      "pack_refs": [],
+      "acceptance_criteria": [
+        "Directory layout matches SPEC.md section 2 (skill/, packs/, schemas/, scripts/, docs/)",
+        "README.md (en) and README.zh-CN.md exist; both state positioning, non-goals, and the cold-start demo narrative",
+        "LICENSE chosen and added",
+        "git repository initialized with first commit"
+      ],
+      "verification": {
+        "manual": ["Tree matches SPEC layout; READMEs read coherently in both languages"],
+        "automated": ["git -C . rev-parse --git-dir"]
+      },
+      "files_expected": ["README.md", "README.zh-CN.md", "LICENSE", "docs/architecture.md"],
+      "notes": ""
+    },
+    {
+      "id": "F002",
+      "title": "Protocol schemas: pack, feature_list, manifest",
+      "status": "planned",
+      "priority": "p0",
+      "depends_on": ["F001"],
+      "pack_refs": [],
+      "acceptance_criteria": [
+        "schemas/pack.schema.json covers id, type(stack|domain), version, last_reviewed, summary, requires, conflicts, provides, stacks, trust{level, scripts_enabled_by_default, requires_confirmation}",
+        "schemas/feature_list.schema.json enforces the 6-state machine and required per-feature fields (acceptance_criteria, verification, pack_refs, depends_on)",
+        "schemas/manifest.schema.json covers polyrig_version, generated_at, language, selected_packs[{id, version, source, last_reviewed, copied_to, checksum}], overrides",
+        "docs/pack-protocol.md documents the protocol in prose with examples"
+      ],
+      "verification": {
+        "manual": ["docs/pack-protocol.md examples validate against the schemas by inspection"],
+        "automated": ["node -e \"['pack','feature_list','manifest'].forEach(s=>JSON.parse(require('fs').readFileSync('schemas/'+s+'.schema.json','utf8')))\""]
+      },
+      "files_expected": ["schemas/pack.schema.json", "schemas/feature_list.schema.json", "schemas/manifest.schema.json", "docs/pack-protocol.md"],
+      "notes": "Schemas are the protocol; write them before any pack content."
+    },
+    {
+      "id": "F003",
+      "title": "Zero-dependency tooling scripts",
+      "status": "planned",
+      "priority": "p0",
+      "depends_on": ["F002"],
+      "pack_refs": [],
+      "acceptance_criteria": [
+        "scripts/validate-pack.mjs validates a pack directory against pack.schema.json plus structural rules (knowledge/overview.md and verify.md present; per-stack/ files match pack.yaml stacks; domain packs' requires resolvable)",
+        "scripts/build-pack-index.mjs scans the three discovery roots (builtin, ~/.claude/polyrig-packs, <target>/.polyrig/packs), applies project>user>builtin override precedence, and emits an index JSON including trust source and script presence per pack",
+        "scripts/link-skill.mjs symlinks (or copies with --copy) skill/claude-code/polyrig into ~/.claude/skills/polyrig, idempotently",
+        "scripts/doctor.mjs checks node version, skill link status, and runs validate-pack over all builtin packs",
+        "All scripts run on bare node (no package.json dependencies) and exit non-zero on failure"
+      ],
+      "verification": {
+        "manual": ["Create a deliberately broken pack; validate-pack.mjs reports the specific violation"],
+        "automated": ["node scripts/doctor.mjs"]
+      },
+      "files_expected": ["scripts/validate-pack.mjs", "scripts/build-pack-index.mjs", "scripts/link-skill.mjs", "scripts/doctor.mjs"],
+      "notes": "Deterministic work only; all user interaction stays in the skill."
+    },
+    {
+      "id": "F004",
+      "title": "Pack: stack/android",
+      "status": "planned",
+      "priority": "p0",
+      "depends_on": ["F002"],
+      "pack_refs": ["stack/android"],
+      "acceptance_criteria": [
+        "knowledge/overview.md: project structure conventions, Gradle/AGP/Kotlin version relationships as decision guidance (no pinned versions in prose), module layering, build variants",
+        "knowledge/pitfalls.md: known traps and security red lines (e.g. keystore handling, minSdk pitfalls)",
+        "deps.yaml: coordinates + lookup strategy + official sources, version_policy: verify_latest_before_use",
+        "verify.md: build/lint/test/connected-check verification routes",
+        "passes scripts/validate-pack.mjs"
+      ],
+      "verification": {
+        "manual": ["Author self-review: every statement is slow-changing or delegated to deps.yaml lookup"],
+        "automated": ["node scripts/validate-pack.mjs packs/stack/android"]
+      },
+      "files_expected": ["packs/stack/android/pack.yaml", "packs/stack/android/knowledge/overview.md", "packs/stack/android/knowledge/pitfalls.md", "packs/stack/android/deps.yaml", "packs/stack/android/verify.md"],
+      "notes": ""
+    },
+    {
+      "id": "F005",
+      "title": "Pack: stack/backend-fastapi",
+      "status": "planned",
+      "priority": "p0",
+      "depends_on": ["F002"],
+      "pack_refs": ["stack/backend-fastapi"],
+      "acceptance_criteria": [
+        "knowledge/overview.md: project layout, async patterns, settings/env management, dependency injection, API versioning as decision guidance",
+        "knowledge/pitfalls.md: known traps and security red lines (e.g. CORS, secrets in env, sync-in-async)",
+        "deps.yaml: coordinates + lookup strategy + official sources",
+        "verify.md: pytest/type-check/run verification routes",
+        "passes scripts/validate-pack.mjs"
+      ],
+      "verification": {
+        "manual": ["Author self-review for slow-changing-only prose"],
+        "automated": ["node scripts/validate-pack.mjs packs/stack/backend-fastapi"]
+      },
+      "files_expected": ["packs/stack/backend-fastapi/pack.yaml", "packs/stack/backend-fastapi/knowledge/overview.md", "packs/stack/backend-fastapi/knowledge/pitfalls.md", "packs/stack/backend-fastapi/deps.yaml", "packs/stack/backend-fastapi/verify.md"],
+      "notes": ""
+    },
+    {
+      "id": "F006",
+      "title": "Pack: domain/auth-core",
+      "status": "planned",
+      "priority": "p0",
+      "depends_on": ["F002"],
+      "pack_refs": ["domain/auth-core"],
+      "acceptance_criteria": [
+        "knowledge/overview.md: OAuth2/OIDC flow decision tree (which flow for which client type), token exchange, refresh strategy, server-side session vs stateless, secure storage principles per platform class",
+        "knowledge/pitfalls.md: CSRF/nonce/state handling, redirect URI validation, token leakage red lines",
+        "verify.md: auth-flow verification checklist (happy path, failure states, token persistence, revocation)",
+        "provides: [auth-core]; no provider-specific content leaks in",
+        "passes scripts/validate-pack.mjs"
+      ],
+      "verification": {
+        "manual": ["Cross-check: nothing Google/Apple/WeChat-specific appears in this pack"],
+        "automated": ["node scripts/validate-pack.mjs packs/domain/auth-core"]
+      },
+      "files_expected": ["packs/domain/auth-core/pack.yaml", "packs/domain/auth-core/knowledge/overview.md", "packs/domain/auth-core/knowledge/pitfalls.md", "packs/domain/auth-core/verify.md"],
+      "notes": "Foundation pack; F007 depends on it via requires."
+    },
+    {
+      "id": "F007",
+      "title": "Pack: domain/auth-google",
+      "status": "planned",
+      "priority": "p0",
+      "depends_on": ["F004", "F005", "F006"],
+      "pack_refs": ["domain/auth-google"],
+      "acceptance_criteria": [
+        "pack.yaml requires: [domain/auth-core]; stacks: [android, backend-fastapi]",
+        "knowledge/per-stack/android.md: Credential Manager / Google Identity integration decisions, ID-token flow to backend",
+        "knowledge/per-stack/backend-fastapi.md: ID-token verification, audience checks, session issuance",
+        "deps.yaml: package candidates + lookup strategy + official Google sources only",
+        "verify.md extends auth-core checklist with Google-specific checks (audience, token expiry, revoked account)",
+        "passes scripts/validate-pack.mjs including requires resolution"
+      ],
+      "verification": {
+        "manual": ["Author self-review against current official Google Identity docs"],
+        "automated": ["node scripts/validate-pack.mjs packs/domain/auth-google"]
+      },
+      "files_expected": ["packs/domain/auth-google/pack.yaml", "packs/domain/auth-google/knowledge/per-stack/android.md", "packs/domain/auth-google/knowledge/per-stack/backend-fastapi.md", "packs/domain/auth-google/deps.yaml", "packs/domain/auth-google/verify.md"],
+      "notes": ""
+    },
+    {
+      "id": "F008",
+      "title": "Artifact templates",
+      "status": "planned",
+      "priority": "p0",
+      "depends_on": ["F002"],
+      "pack_refs": [],
+      "acceptance_criteria": [
+        "templates/ contains SPEC.md, AGENTS.md, CLAUDE.md, feature_list.json, manifest.json, init.plan.md, init.sh, deps.resolved.md",
+        "AGENTS.md template is routing + hard rules only (state-update rule, verified-gate rule); no knowledge prose",
+        "CLAUDE.md template is a thin pointer to AGENTS.md with zero duplicated content",
+        "init.sh template has set -euo pipefail, review-first header, and only creates context dirs/files (no dep installs, no build-file edits, no remote fetches)",
+        "feature_list.json and manifest.json templates validate against schemas/"
+      ],
+      "verification": {
+        "manual": ["Read-through: templates contain placeholders, not example knowledge"],
+        "automated": ["node -e \"JSON.parse(require('fs').readFileSync('skill/claude-code/polyrig/templates/feature_list.json','utf8'))\""]
+      },
+      "files_expected": ["skill/claude-code/polyrig/templates/SPEC.md", "skill/claude-code/polyrig/templates/AGENTS.md", "skill/claude-code/polyrig/templates/CLAUDE.md", "skill/claude-code/polyrig/templates/feature_list.json", "skill/claude-code/polyrig/templates/manifest.json", "skill/claude-code/polyrig/templates/init.plan.md", "skill/claude-code/polyrig/templates/init.sh", "skill/claude-code/polyrig/templates/deps.resolved.md"],
+      "notes": ""
+    },
+    {
+      "id": "F009",
+      "title": "Claude Code skill: /polyrig (SKILL.md)",
+      "status": "planned",
+      "priority": "p0",
+      "depends_on": ["F003", "F008"],
+      "pack_refs": [],
+      "acceptance_criteria": [
+        "SKILL.md implements the seven-phase interview (identity, stack, domains, constraints, first feature, verification route, generate); 1-3 questions per phase, each with a recommended answer and default",
+        "SKILL.md is flow/routing/decision-tree/artifact-format only; all knowledge stays in packs (thin-skill rule)",
+        "Pack discovery via scripts/build-pack-index.mjs; override announcements and trust rules enforced (project-level packs: scripts never run by default; user-level: confirm first)",
+        "Assembly performs online version verification per deps.yaml lookup strategies and writes deps.resolved.md with date/source/confidence; staleness warning when last_reviewed exceeds 180 days",
+        "Generation copies selected pack knowledge into docs/stacks|domains/, writes all artifacts from templates, and records the audit chain in .polyrig/manifest.json with checksums",
+        "Language rule stated explicitly: interaction follows the user's language; generated artifacts are English",
+        "node scripts/link-skill.mjs installs it; /polyrig appears and runs in a fresh Claude Code session"
+      ],
+      "verification": {
+        "manual": ["Dry-run the interview in a scratch directory; inspect every generated artifact against SPEC section 5"],
+        "automated": ["node scripts/doctor.mjs"]
+      },
+      "files_expected": ["skill/claude-code/polyrig/SKILL.md"],
+      "notes": "The only Claude-specific component in the system."
+    },
+    {
+      "id": "F010",
+      "title": "Golden-path cold-start acceptance demo",
+      "status": "planned",
+      "priority": "p0",
+      "depends_on": ["F004", "F005", "F006", "F007", "F009"],
+      "pack_refs": ["stack/android", "stack/backend-fastapi", "domain/auth-core", "domain/auth-google"],
+      "acceptance_criteria": [
+        "A real small project (Android app + FastAPI backend, Google Sign-In) is initialized via /polyrig",
+        "All generated artifacts validate against schemas/; .polyrig/manifest.json records all 4 packs with checksums",
+        "A FRESH session with zero verbal context implements the first feature relying only on on-disk artifacts",
+        "The first feature passes its verification route (automated commands pass; manual checks documented)",
+        "feature_list.json in the demo project shows the feature transitioned planned -> in_progress -> implemented -> verified by the agent itself",
+        "The demo run is written up as the README core narrative"
+      ],
+      "verification": {
+        "manual": ["Full cold-start run as described; reviewer confirms no verbal context was supplied to the fresh session"],
+        "automated": []
+      },
+      "files_expected": ["docs/examples/golden-path-demo.md"],
+      "notes": "This is the v0.1 release gate. If this passes, PolyRig holds."
+    },
+    {
+      "id": "F011",
+      "title": "Authoring guide for pack authors",
+      "status": "planned",
+      "priority": "p1",
+      "depends_on": ["F002", "F007"],
+      "pack_refs": [],
+      "acceptance_criteria": [
+        "docs/authoring-packs.md walks through creating a user-level pack (e.g. a voice-IME domain pack) by hand against the protocol",
+        "Documents the three discovery roots, override precedence, and trust implications for pack authors",
+        "Uses auth-google as the worked reference example"
+      ],
+      "verification": {
+        "manual": ["A reader can produce a validate-pack-passing pack following only this doc"],
+        "automated": ["node scripts/validate-pack.mjs <pack created during doc review>"]
+      },
+      "files_expected": ["docs/authoring-packs.md"],
+      "notes": "The AI pack-authoring wizard itself is deferred past v0.1; this doc is the manual path."
+    }
+  ]
+}

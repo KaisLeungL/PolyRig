@@ -1,0 +1,22 @@
+# Node artifacts (scripts are zero-dependency, but keep the repo clean anyway)
+node_modules/
+npm-debug.log*
+yarn-error.log*
+package-lock.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Scratch / local experiment dirs
+tmp/
+scratch/
+*.local/
+
+# Local agent settings
+.claude/settings.local.json
