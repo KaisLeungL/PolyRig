@@ -160,6 +160,156 @@ function listMarkdownFiles(dir) {
 }
 
 // ---------------------------------------------------------------------------
+// Evidence Matrix helpers
+// ---------------------------------------------------------------------------
+
+const EVIDENCE_COLUMNS = ['id', 'claim', 'status', 'source_type', 'urls', 'applies_to', 'volatility', 'notes'];
+const EVIDENCE_STATUSES = new Set(['source-backed', 'user-provided', 'inferred', 'unverified']);
+const EVIDENCE_VOLATILITY = new Set(['low', 'medium', 'high']);
+const STRONG_RULE_PATTERNS = [
+  /\bRED LINE\b/i,
+  /\bmust\b/i,
+  /\bnever\b/i,
+  /\brequired\b/i,
+  /\bdo not\b/i,
+  /禁止/,
+  /必须/,
+  /绝不/,
+];
+
+function markdownTableCells(line) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('|')) return null;
+  const withoutEdges = trimmed.replace(/^\|/, '').replace(/\|$/, '');
+  return withoutEdges.split('|').map((cell) => cell.trim());
+}
+
+function isMarkdownSeparator(line) {
+  const cells = markdownTableCells(line);
+  return cells !== null && cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+}
+
+function parseEvidenceMarkerIds(text) {
+  const ids = [];
+  for (const match of text.matchAll(/\[Evidence:\s*([^\]]+)\]/g)) {
+    ids.push(...match[1].split(',').map((id) => id.trim()).filter(Boolean));
+  }
+  return ids;
+}
+
+function isStrongRuleLine(line) {
+  return STRONG_RULE_PATTERNS.some((pattern) => pattern.test(line));
+}
+
+function relativePackPath(packDir, file) {
+  return file.startsWith(`${packDir}/`) ? file.slice(packDir.length + 1) : file;
+}
+
+function validateEvidenceMatrix(packDir, violations) {
+  const evidence = new Map();
+  const sourcesPath = join(packDir, 'references', 'sources.md');
+  if (!isFile(sourcesPath)) {
+    violations.push('references/sources.md: missing (required)');
+    return evidence;
+  }
+
+  const text = readFileSync(sourcesPath, 'utf8');
+  if (text.trim() === '') {
+    violations.push('references/sources.md: present but empty');
+    return evidence;
+  }
+
+  const lines = text.split(/\r?\n/);
+  const headingIndex = lines.findIndex((line) => /^##\s+Evidence Matrix\s*$/.test(line.trim()));
+  if (headingIndex === -1) {
+    violations.push('references/sources.md: missing ## Evidence Matrix');
+    return evidence;
+  }
+
+  let headerIndex = -1;
+  for (let i = headingIndex + 1; i < lines.length; i++) {
+    if (lines[i].trim() === '') continue;
+    if (markdownTableCells(lines[i]) !== null) headerIndex = i;
+    break;
+  }
+  if (headerIndex === -1) {
+    violations.push('references/sources.md: Evidence Matrix table missing header row');
+    return evidence;
+  }
+
+  const header = markdownTableCells(lines[headerIndex]).map((cell) => cell.toLowerCase());
+  for (const column of EVIDENCE_COLUMNS) {
+    if (!header.includes(column)) {
+      violations.push(`references/sources.md: Evidence Matrix missing column '${column}'`);
+    }
+  }
+  if (!isMarkdownSeparator(lines[headerIndex + 1] ?? '')) {
+    violations.push('references/sources.md: Evidence Matrix missing separator row');
+    return evidence;
+  }
+
+  const columnIndex = new Map(header.map((column, idx) => [column, idx]));
+  for (let i = headerIndex + 2; i < lines.length; i++) {
+    const rawLine = lines[i];
+    if (rawLine.trim() === '') break;
+    const cells = markdownTableCells(rawLine);
+    if (cells === null) break;
+
+    const value = (column) => cells[columnIndex.get(column)]?.trim() ?? '';
+    const id = value('id');
+    const status = value('status');
+    const volatility = value('volatility');
+    const rowLabel = `references/sources.md:${i + 1}`;
+
+    if (!/^E\d{3}$/.test(id)) {
+      violations.push(`${rowLabel}: evidence id '${id}' must match E\\d{3}`);
+      continue;
+    }
+    if (evidence.has(id)) {
+      violations.push(`${rowLabel}: duplicate evidence id ${id}`);
+    } else {
+      evidence.set(id, { status, volatility });
+    }
+    if (!EVIDENCE_STATUSES.has(status)) {
+      violations.push(`${rowLabel}: evidence ${id} has invalid status '${status}'`);
+    }
+    if (!EVIDENCE_VOLATILITY.has(volatility)) {
+      violations.push(`${rowLabel}: evidence ${id} has invalid volatility '${volatility}'`);
+    }
+  }
+
+  return evidence;
+}
+
+function validateEvidenceReferencesInMarkdown(packDir, files, evidence, violations) {
+  for (const file of files) {
+    const rel = relativePackPath(packDir, file);
+    const lines = readFileSync(file, 'utf8').split(/\r?\n/);
+    lines.forEach((line, idx) => {
+      const label = `${rel}:${idx + 1}`;
+      const refs = parseEvidenceMarkerIds(line);
+      for (const id of refs) {
+        if (!evidence.has(id)) violations.push(`${label}: unknown evidence id ${id}`);
+      }
+      if (!isStrongRuleLine(line)) return;
+      if (refs.length === 0) {
+        violations.push(`${label}: strong rule lacks evidence marker`);
+        return;
+      }
+      const knownStatuses = refs.map((id) => evidence.get(id)?.status).filter(Boolean);
+      for (const id of refs) {
+        if (evidence.get(id)?.status === 'unverified') {
+          violations.push(`${label}: strong rule references unverified evidence ${id}`);
+        }
+      }
+      if (knownStatuses.length > 0 && knownStatuses.every((status) => status === 'inferred')) {
+        violations.push(`${label}: strong rule must cite source-backed or user-provided evidence`);
+      }
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Full pack validation
 // ---------------------------------------------------------------------------
 
@@ -249,6 +399,14 @@ export function validatePackDir(packDir, { roots = [join(REPO_ROOT, 'packs')] } 
     }
   }
 
+  // --- references/sources.md: Evidence Matrix and Markdown citations --------
+  const evidence = validateEvidenceMatrix(dir, violations);
+  const evidenceMarkdownFiles = [
+    ...(isDir(knowledgeDir) ? listMarkdownFiles(knowledgeDir) : []),
+    ...(isFile(verifyPath) ? [verifyPath] : []),
+  ];
+  validateEvidenceReferencesInMarkdown(dir, evidenceMarkdownFiles, evidence, violations);
+
   // --- deps.yaml: optional, but must parse and carry lookup strategies ------
   const depsPath = join(dir, 'deps.yaml');
   if (isFile(depsPath)) {
@@ -280,6 +438,17 @@ export function validatePackDir(packDir, { roots = [join(REPO_ROOT, 'packs')] } 
             const hasSource = typeof entry.source === 'string' && entry.source.trim() !== '';
             if (!hasLookup && !hasSource) {
               violations.push(`${label}: must carry a lookup strategy (lookup.query / lookup.official_sources) or a source`);
+            }
+            if (!Array.isArray(entry.evidence) || entry.evidence.length === 0) {
+              violations.push(`${label}: missing evidence array`);
+            } else {
+              entry.evidence.forEach((id, evidenceIdx) => {
+                if (typeof id !== 'string') {
+                  violations.push(`${label}: evidence[${evidenceIdx}] must be an evidence id string`);
+                } else if (!evidence.has(id)) {
+                  violations.push(`${label}: unknown evidence id ${id}`);
+                }
+              });
             }
           });
         }
