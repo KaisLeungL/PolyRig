@@ -7,7 +7,7 @@
     {
       "id": "F001",
       "title": "Repository skeleton and bilingual README",
-      "status": "implemented",
+      "status": "verified",
       "priority": "p0",
       "depends_on": [],
       "pack_refs": [],
@@ -27,7 +27,7 @@
     {
       "id": "F002",
       "title": "Protocol schemas: pack, feature_list, manifest",
-      "status": "implemented",
+      "status": "verified",
       "priority": "p0",
       "depends_on": ["F001"],
       "pack_refs": [],
@@ -47,7 +47,7 @@
     {
       "id": "F003",
       "title": "Zero-dependency tooling scripts",
-      "status": "implemented",
+      "status": "verified",
       "priority": "p0",
       "depends_on": ["F002"],
       "pack_refs": [],
@@ -68,7 +68,7 @@
     {
       "id": "F004",
       "title": "Pack: stack/android",
-      "status": "implemented",
+      "status": "verified",
       "priority": "p0",
       "depends_on": ["F002"],
       "pack_refs": ["stack/android"],
@@ -89,7 +89,7 @@
     {
       "id": "F005",
       "title": "Pack: stack/backend-fastapi",
-      "status": "implemented",
+      "status": "verified",
       "priority": "p0",
       "depends_on": ["F002"],
       "pack_refs": ["stack/backend-fastapi"],
@@ -110,7 +110,7 @@
     {
       "id": "F006",
       "title": "Pack: domain/auth-core",
-      "status": "implemented",
+      "status": "verified",
       "priority": "p0",
       "depends_on": ["F002"],
       "pack_refs": ["domain/auth-core"],
@@ -131,7 +131,7 @@
     {
       "id": "F007",
       "title": "Pack: domain/auth-google",
-      "status": "planned",
+      "status": "verified",
       "priority": "p0",
       "depends_on": ["F004", "F005", "F006"],
       "pack_refs": ["domain/auth-google"],
@@ -153,7 +153,7 @@
     {
       "id": "F008",
       "title": "Artifact templates",
-      "status": "implemented",
+      "status": "verified",
       "priority": "p0",
       "depends_on": ["F002"],
       "pack_refs": [],
@@ -174,7 +174,7 @@
     {
       "id": "F009",
       "title": "Claude Code skill: /polyrig (SKILL.md)",
-      "status": "planned",
+      "status": "implemented",
       "priority": "p0",
       "depends_on": ["F003", "F008"],
       "pack_refs": [],
@@ -192,12 +192,12 @@
         "automated": ["node scripts/doctor.mjs"]
       },
       "files_expected": ["skill/claude-code/polyrig/SKILL.md"],
-      "notes": "The only Claude-specific component in the system."
+      "notes": "The only Claude-specific component in the system. Implemented and installed (link-skill + doctor pass); not 'verified' because the manual dry-run of the full seven-phase interview is pending — it doubles as the F010 demo."
     },
     {
       "id": "F010",
       "title": "Golden-path cold-start acceptance demo",
-      "status": "planned",
+      "status": "blocked",
       "priority": "p0",
       "depends_on": ["F004", "F005", "F006", "F007", "F009"],
       "pack_refs": ["stack/android", "stack/backend-fastapi", "domain/auth-core", "domain/auth-google"],
@@ -214,12 +214,12 @@
         "automated": []
       },
       "files_expected": ["docs/examples/golden-path-demo.md"],
-      "notes": "This is the v0.1 release gate. If this passes, PolyRig holds."
+      "notes": "This is the v0.1 release gate. If this passes, PolyRig holds. BLOCKED on interactive execution the orchestrator cannot perform alone: running /polyrig in a live session, Google Cloud OAuth client setup, a device/emulator, and a fresh zero-context session. Runbook prepared at docs/examples/golden-path-demo.md."
     },
     {
       "id": "F011",
       "title": "Authoring guide for pack authors",
-      "status": "planned",
+      "status": "verified",
       "priority": "p1",
       "depends_on": ["F002", "F007"],
       "pack_refs": [],
@@ -233,7 +233,7 @@
         "automated": ["node scripts/validate-pack.mjs <pack created during doc review>"]
       },
       "files_expected": ["docs/authoring-packs.md"],
-      "notes": "The AI pack-authoring wizard itself is deferred past v0.1; this doc is the manual path."
+      "notes": "The AI pack-authoring wizard itself is deferred past v0.1; this doc is the manual path. Verified: author followed the guide to hand-build a voice-ime pack in a temp user root; validate-pack passed on first run (evidence in orchestration log)."
     }
   ]
 }
