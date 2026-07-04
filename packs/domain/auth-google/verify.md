@@ -34,7 +34,7 @@ tests; make the Google variants concrete:
 - [ ] **[A]** A valid, verified Google ID token presented as the bearer
       credential to a regular protected endpoint (NOT the sign-in endpoint)
       is rejected with 401 — no fallback verification path exists.
-      (Integration test; this is the "ID token as session" red line.)
+      (Integration test; this is the "ID token as session" red line.) [Evidence: E002, E008]
 
 ## 3. Consent screen and account state
 

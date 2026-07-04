@@ -10,6 +10,7 @@ dependencies:
   - coordinate: androidx.credentials:credentials + androidx.credentials:credentials-play-services-auth
     stack: android
     source: official
+    evidence: [E001]
     purpose: Credential Manager runtime and its Play-services provider integration — the platform surface that mediates Google sign-in
     lookup:
       query: "androidx credentials credential manager latest stable version play-services-auth integration"
@@ -30,6 +31,7 @@ dependencies:
   - coordinate: com.google.android.libraries.identity.googleid:googleid
     stack: android
     source: official
+    evidence: [E001]
     purpose: Sign in with Google credential types for Credential Manager (Google ID token credential request/response parsing)
     lookup:
       query: "googleid library latest version Sign in with Google Credential Manager"
@@ -48,6 +50,7 @@ dependencies:
   - coordinate: google-auth (PyPI)
     stack: backend-fastapi
     source: official
+    evidence: [E002, E009]
     purpose: Default choice — verify Google ID tokens server-side (Google-aware verifier with built-in certificate handling)
     lookup:
       query: "google-auth python verify_oauth2_token latest version clock skew audience"
@@ -67,6 +70,7 @@ dependencies:
   - coordinate: PyJWT + cryptography (PyPI)
     stack: backend-fastapi
     source: official
+    evidence: [E002, E009]
     purpose: Alternative — generic JWT verification against Google's JWKS when the project wants one shared, explicitly-cached verification path
     lookup:
       query: "PyJWT PyJWKClient latest version verify RS256 JWKS audience issuer"

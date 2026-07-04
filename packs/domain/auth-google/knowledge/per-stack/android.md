@@ -19,7 +19,7 @@ this pack's `overview.md`. Auth-core rules apply throughout.
 - Authentication and authorization are separate surfaces in this era: the
   sign-in credential carries identity only. If a feature later needs Google
   API scopes, that is a separate authorization call and a separate design
-  decision (overview §4) — do not bolt scope requests onto sign-in.
+  decision (overview §4) — do not bolt scope requests onto sign-in. [Evidence: E004]
 
 ## Where sign-in lives architecturally
 
@@ -29,18 +29,18 @@ this pack's `overview.md`. Auth-core rules apply throughout.
   fresh nonce), invoking the credential manager, parsing the returned
   credential into a domain-level result, and the backend token exchange.
 - The credential-manager call requires an **Activity context** for its UI.
-  Pass it as a method parameter at the call site; never store a Context in
+  Pass it as a method parameter at the call site; never store a Context in [Evidence: E006]
   the ViewModel or repository (stack rule: state classes stay
   framework-free).
 - The **ViewModel orchestrates**: it exposes a single immutable auth UI
   state (idle / in-progress / signed-in / error-with-kind) and dispatches the
   sign-in event to the repository. The UI observes state and renders; it
-  never touches credential APIs directly.
+  never touches credential APIs directly. [Evidence: E006]
 
 ## Debug vs release fingerprints — the top failure class
 
 - Each build signing key has its own SHA-1/SHA-256 fingerprint, and the
-  Google console must know **every fingerprint that will ever request a
+  Google console must know **every fingerprint that will ever request a [Evidence: E003]
   credential**: the debug keystore's, any local release keystore's, and —
   critically — with **Play App Signing, the release fingerprint is Google's
   app-signing key shown in the Play Console**, not your local upload
@@ -61,13 +61,13 @@ this pack's `overview.md`. Auth-core rules apply throughout.
   backend's sign-in endpoint over TLS immediately and discard it. The
   credential your app persists is the **backend-issued session**, stored per
   auth-core's mobile rules (keystore-class storage for refresh material).
-  Never treat "I still hold a Google ID token" as "signed in".
-- Credential-manager flows have **expected non-error outcomes** that must be
+  Never treat "I still hold a Google ID token" as "signed in". [Evidence: E002, E006]
+- Credential-manager flows have **expected non-error outcomes** that must be [Evidence: E007]
   modeled explicitly in UI state, not funneled into a generic failure toast:
   the user dismissing the one-tap sheet (cancellation) and the device having
   no eligible credential/account. Both should return the UI to a calm
   signed-out state with the manual sign-in affordance still available —
-  never an error banner, never an automatic retry loop (repeated one-tap
+  never an error banner, never an automatic retry loop (repeated one-tap [Evidence: E007]
   prompts get rate-limited/suppressed by the platform).
 
 ## Error-state map
@@ -76,9 +76,9 @@ this pack's `overview.md`. Auth-core rules apply throughout.
 |---|---|---|
 | Developer-error / no credential despite accounts existing | Fingerprint not registered for THIS build's signing key, or wrong/missing web client ID in the request | Compare installed-APK fingerprint with console registration; confirm the server client ID is the WEB client ID, not the Android one |
 | Cancelled | User dismissed the sheet | Not an error: return to signed-out state, keep manual entry point, no retry loop |
-| No Google account on device | Device/profile has no eligible account | Offer add-account guidance or an alternative sign-in method; do not present as app failure |
+| No Google account on device | Device/profile has no eligible account | Offer add-account guidance or an alternative sign-in method; do not present as app failure [Evidence: E007] |
 | Network failure | Offline or Google endpoint unreachable | Retryable error state with explicit retry action; distinguish from developer-error in state modeling |
-| Backend rejects a token the app just obtained | Audience mismatch (backend expects a different client ID) or backend clock/JWKS issue | Fix configuration, never widen backend validation; see backend notes |
+| Backend rejects a token the app just obtained | Audience mismatch (backend expects a different client ID) or backend clock/JWKS issue | Fix configuration, never widen backend validation; see backend notes [Evidence: E002, E010] |
 
 The first row is the one that burns days: it presents as a runtime failure
 but is a **configuration** failure, invisible in code. Write the diagnostic

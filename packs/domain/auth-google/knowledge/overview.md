@@ -2,7 +2,7 @@
 
 This pack layers Google specifics on top of `domain/auth-core`. Everything
 provider-agnostic — flow selection, token roles, session strategy, the
-server-side verification red line, state/nonce rules, (iss, sub) identity
+server-side verification red line, state/nonce rules, (iss, sub) identity [Evidence: E006]
 modeling — is stated ONCE in the auth-core knowledge and applies here
 unchanged. This file covers only what is specific to Google as a provider.
 
@@ -24,7 +24,7 @@ into two eras:
   **separate API surfaces**: sign-in yields identity only; Google-API scope
   grants go through a distinct authorization call.
 
-**The rule: never hardcode an era in a design doc or in code review lore.
+**The rule: never hardcode an era in a design doc or in code review lore. [Evidence: E001]
 Use whatever surface Google currently recommends, and determine that surface
 by executing the lookups in this pack's `deps.yaml` at assembly time** —
 official Android identity docs first. If a codebase or tutorial you are
@@ -42,7 +42,7 @@ different types**, all representing the same logical app:
   identifies your **backend** as an OAuth client.
 - **Android client ID**: bound to a package name **plus a signing-certificate
   fingerprint**. It exists so Google can verify which APK is asking; your
-  code mostly never handles this ID directly.
+  code mostly never handles this ID directly. [Evidence: E003]
 - **iOS client ID**: bound to a bundle ID (out of scope for this pack's
   stacks, listed for the topology).
 
@@ -55,7 +55,7 @@ binding) is how Google authenticates the requesting APK, and it may appear in
 other claims but is not the audience your server checks. Backend config
 therefore needs the web client ID; the Android app also needs the web client
 ID (to request tokens for the backend); nobody needs the Android client ID in
-code — it must merely exist and be correctly configured in the console.
+code — it must merely exist and be correctly configured in the console. [Evidence: E003]
 
 All client IDs live in one Google Cloud Console project, alongside the OAuth
 consent screen configuration that governs them all. Client IDs are
@@ -79,8 +79,8 @@ a real secret under auth-core's storage rules.
    involvement ends once the ID token is verified and consumed.
 
 The Google ID token is proof of authentication, consumed once at sign-in.
-Per auth-core's red line it is never a session credential, never accepted on
-ordinary endpoints, and never trusted without server-side verification.
+Per auth-core's red line it is never a session credential, never accepted on [Evidence: E002, E006]
+ordinary endpoints, and never trusted without server-side verification. [Evidence: E002, E006]
 
 ## 4. Consent, scopes, and incremental authorization
 
@@ -91,11 +91,11 @@ ordinary endpoints, and never trusted without server-side verification.
   gracefully when the grant is refused — users can approve scopes
   individually.
 - **Server-side access to Google APIs is a separate decision from sign-in.**
-  If your backend must call Google APIs while the user is offline, that
+  If your backend must call Google APIs while the user is offline, that [Evidence: E004]
   requires an authorization-code flow producing a **Google refresh token
   held by your server** — a distinct grant, a distinct API surface, and a
   distinct threat model (you now custody long-lived Google credentials).
-  Do not smuggle it into the sign-in design; if the product needs it, spec
+  Do not smuggle it into the sign-in design; if the product needs it, spec [Evidence: E004]
   it as its own feature with its own verification route.
 
 ## 5. Constraints that gate testing and rollout
@@ -116,5 +116,5 @@ Two Google-side registrations silently decide who can sign in at all:
   debugging "user X cannot sign in", and record the status plus the test-user
   list in the project's docs while in testing.
 
-Both constraints must be reflected in the verification route: see this
+Both constraints must be reflected in the verification route: see this [Evidence: E003, E005]
 pack's `verify.md`, which extends the auth-core checklist.
