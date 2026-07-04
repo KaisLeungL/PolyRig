@@ -1,0 +1,4 @@
+interface:
+  display_name: "PolyRig Pack Author"
+  short_description: "Create or update Evidence Matrix-backed PolyRig packs"
+  default_prompt: "Use $polyrig-pack-author to create or update a PolyRig stack/domain pack."

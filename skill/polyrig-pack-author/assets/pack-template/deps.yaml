@@ -1,0 +1,11 @@
+version_policy: verify_latest_before_use
+dependencies:
+  - coordinate: example.dependency
+    stack: example-stack
+    purpose: Replace with the dependency or platform surface this pack relies on
+    lookup:
+      query: "example dependency official documentation latest"
+      official_sources:
+        - TODO:official-dependency-doc-url
+    notes: Replace this with what the future agent should re-check before use.
+    evidence: [E002, E006]

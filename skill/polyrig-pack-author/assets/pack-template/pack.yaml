@@ -1,0 +1,14 @@
+# Replace this example identity before publishing the pack.
+id: domain/example-pack
+type: domain
+version: 0.1.0
+last_reviewed: 2026-07-04
+summary: Example pack summary for stable decisions, pitfalls, dependencies, and verification
+requires: []
+conflicts: []
+provides: [example-capability]
+stacks: []
+trust:
+  level: user
+  scripts_enabled_by_default: false
+  requires_confirmation: true
