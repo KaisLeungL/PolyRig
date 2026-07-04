@@ -169,6 +169,9 @@ record `confidence: unverified` and say so in the final report.
   `stack/` prefix), domain packs → `<target>/docs/domains/<short-id>/`.
 - Copy `knowledge/*.md` (preserve the `per-stack/` subdirectory when present,
   otherwise flatten) plus the pack's `verify.md`.
+- Copy `references/sources.md` as `sources.md` in the same target doc directory:
+  stack packs → `<target>/docs/stacks/<short-id>/sources.md`, domain packs →
+  `<target>/docs/domains/<short-id>/sources.md`.
 - Do **NOT** copy or run pack `scripts/` unless the trust table above permits it
   and (for user packs) the user explicitly confirmed.
 
@@ -191,7 +194,8 @@ filling every placeholder from interview answers and removing all `polyrig:` com
 Field translation: the index script emits overrides as `winner_source`/`loser_source`
 — the manifest schema requires **`winning_source`/`losing_source`**; translate when
 writing (also fill `winning_path` and `carries_scripts` from the index). Per selected
-pack compute one checksum over its copied files, run from `<target>`:
+pack compute one checksum over its copied files, including copied `sources.md`,
+run from `<target>`:
 
 ```bash
 find docs/<stacks|domains>/<short-id> -type f | LC_ALL=C sort | xargs shasum -a 256 | shasum -a 256 | cut -d" " -f1

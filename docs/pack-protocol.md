@@ -28,6 +28,8 @@ packs/<type>/<id>/
     per-stack/         # domain packs only: per-stack implementation notes
       android.md
       backend-fastapi.md
+  references/          # REQUIRED source and evidence material
+    sources.md         # REQUIRED Evidence Matrix
   deps.yaml            # OPTIONAL: dependency coordinates + lookup strategy
   verify.md            # REQUIRED: self-check list for features built with this pack
   scripts/             # OPTIONAL: deterministic helpers (env check, config gen)
@@ -35,13 +37,17 @@ packs/<type>/<id>/
 
 Structural rules:
 
-- `pack.yaml`, `verify.md`, and a **non-empty** `knowledge/` directory are
-  required. A pack missing any of these fails `scripts/validate-pack.mjs`.
+- `pack.yaml`, `verify.md`, a **non-empty** `knowledge/` directory, and
+  `references/sources.md` are required. A pack missing any of these fails
+  `scripts/validate-pack.mjs`.
 - `deps.yaml` and `scripts/` are optional.
 - A **domain pack that declares `stacks`** in its `pack.yaml` should provide a
   matching `knowledge/per-stack/<stack>.md` for each declared stack short-name.
 - Knowledge is Markdown prose. Nothing in `knowledge/` is executed; it is copied
   verbatim into the target project's `docs/stacks/<id>/` or `docs/domains/<id>/`.
+- `references/sources.md` is also copied into the target project as `sources.md`
+  beside the knowledge files. It is evidence material for disputes, audits, and
+  provenance tracing; it is not required reading for routine implementation.
 
 ## pack.yaml
 
@@ -94,6 +100,38 @@ The single most important authoring rule:
   current versions and breaking changes, and writes the results into the target
   project's `deps.resolved.md` — dated, sourced, confidence-rated. Verified
   results are **never written back into pack prose** as eternal facts.
+
+## Evidence Matrix
+
+Every pack MUST include `references/sources.md` with a `## Evidence Matrix`
+section. The matrix is a Markdown table that gives stable evidence ids for
+source-backed, user-provided, inferred, or unverified claims.
+
+Required columns:
+
+```text
+id, claim, status, source_type, urls, applies_to, volatility, notes
+```
+
+Rules:
+
+- `id` uses `E001` format, is unique within the pack, and is referenced from
+  pack prose as inline markers such as `[Evidence: E001, E002]`.
+- Strong rules, security red lines, and must/never requirements in
+  `knowledge/*.md` and `verify.md` cite evidence markers.
+- Strong rules do not rely on `unverified` evidence, and do not rely only on
+  `inferred` evidence.
+- Each `deps.yaml` dependency entry cites the evidence ids that justify its
+  lookup strategy.
+
+During `/polyrig` generation, `references/sources.md` is copied to:
+
+- stack pack: `<target>/docs/stacks/<short-id>/sources.md`
+- domain pack: `<target>/docs/domains/<short-id>/sources.md`
+
+The copied `sources.md` file is included in the selected pack checksum recorded
+in `.polyrig/manifest.json`, so the manifest covers both daily knowledge and the
+Evidence Matrix that supports it.
 
 ## deps.yaml
 
@@ -184,7 +222,8 @@ repository, so its scripts never run by default — regardless of what its
 
 - `node scripts/validate-pack.mjs <pack-dir>` validates `pack.yaml` against
   `schemas/pack.schema.json` and checks the structural rules above (required
-  files, per-stack coverage, resolvable `requires`).
+  files, Evidence Matrix shape and references, per-stack coverage, resolvable
+  `requires`).
 - `node scripts/build-pack-index.mjs` scans the three discovery roots, applies
   override precedence, and emits an index including trust source and script
   presence per pack.

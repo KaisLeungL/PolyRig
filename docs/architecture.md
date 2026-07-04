@@ -29,8 +29,9 @@ Location: `packs/{stack,domain}/` and `schemas/`
 
 - **Packs** are pure data directories: slow-changing knowledge (decision trees,
   pitfalls, security red lines, verification reasoning), dependency lookup
-  strategies (`deps.yaml`), and verification checklists (`verify.md`). A pack is
-  never a skill and occupies no skill-trigger budget.
+  strategies (`deps.yaml`), verification checklists (`verify.md`), and Evidence
+  Matrix source material (`references/sources.md`). A pack is never a skill and
+  occupies no skill-trigger budget.
 - **Schemas** (`pack.schema.json`, `feature_list.schema.json`,
   `manifest.schema.json`) are the protocol itself, expressed as JSON Schema.
   Anything that claims to be a pack, a feature list, or a manifest must validate
@@ -46,10 +47,12 @@ Produced by the interview into the **target** repository:
 - `SPEC.md`, `AGENTS.md`, `CLAUDE.md` (thin pointer to AGENTS.md)
 - `feature_list.json` — the persistent feature state machine
 - `docs/stacks/<id>/`, `docs/domains/<id>/` — pack knowledge **physically
-  copied** in, so it travels with the repo, enters git, and is readable by any
-  agent on any machine with no PolyRig installation
+  copied** in, including `sources.md` copied from each pack's
+  `references/sources.md`, so it travels with the repo, enters git, and is
+  readable by any agent on any machine with no PolyRig installation
 - `docs/verify.md`, `deps.resolved.md`
-- `.polyrig/manifest.json` — the audit chain
+- `.polyrig/manifest.json` — the audit chain, with selected-pack checksums that
+  include copied `sources.md`
 - `init.plan.md`, `init.sh`
 
 Once generated, the target project is self-sufficient: a fresh session with zero
@@ -97,7 +100,9 @@ state that only one AI tool can consume. Concretely:
   (layer 3 depending on layers 1–2 at read time), target repositories stop being
   self-sufficient. Physical copying of pack knowledge — instead of linking — is
   what keeps a generated repo readable on a machine that has never heard of
-  PolyRig.
+  PolyRig. The same rule applies to Evidence Matrix material: copy
+  `references/sources.md` into the generated docs as `sources.md`, and include it
+  in the manifest checksum.
 - **If volatile facts get baked into pack prose**, packs rot silently. That is
   why versions and API details live in `deps.yaml` as lookup strategies, and
   online-verified results land in the target project's dated `deps.resolved.md`,
