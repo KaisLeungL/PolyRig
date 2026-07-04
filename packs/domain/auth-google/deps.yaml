@@ -1,0 +1,85 @@
+# packs/domain/auth-google/deps.yaml
+#
+# Coordinates + lookup strategies, official Google sources only. NO pinned
+# versions here or in knowledge prose: execute each lookup at assembly time,
+# confirm which integration surface Google currently recommends, and record
+# the results in the target project's deps.resolved.md (dated, sourced,
+# confidence-rated).
+version_policy: verify_latest_before_use
+dependencies:
+  - coordinate: androidx.credentials:credentials + androidx.credentials:credentials-play-services-auth
+    stack: android
+    source: official
+    purpose: Credential Manager runtime and its Play-services provider integration — the platform surface that mediates Google sign-in
+    lookup:
+      query: "androidx credentials credential manager latest stable version play-services-auth integration"
+      official_sources:
+        - https://developer.android.com/jetpack/androidx/releases/credentials
+        - https://developer.android.com/identity/sign-in/credential-manager-siwg
+        - https://maven.google.com/
+      package_candidates:
+        - androidx.credentials:credentials
+        - androidx.credentials:credentials-play-services-auth
+    notes: >
+      Both artifacts must resolve from the same release line. Confirm on the
+      official identity docs that Credential Manager is still the recommended
+      Google sign-in surface (the legacy GoogleSignIn / play-services-auth
+      sign-in client is deprecated and scheduled for removal); if the
+      recommendation has moved again, follow the docs, not this pack.
+
+  - coordinate: com.google.android.libraries.identity.googleid:googleid
+    stack: android
+    source: official
+    purpose: Sign in with Google credential types for Credential Manager (Google ID token credential request/response parsing)
+    lookup:
+      query: "googleid library latest version Sign in with Google Credential Manager"
+      official_sources:
+        - https://developer.android.com/identity/sign-in/credential-manager-siwg
+        - https://maven.google.com/
+      package_candidates:
+        - com.google.android.libraries.identity.googleid:googleid
+    notes: >
+      Verify the current credential request option types and the server
+      client ID parameter name against the official guide at resolution
+      time; this API surface has churned across the Identity Services era.
+      If the project later needs Google API scopes, resolve the separate
+      authorization API surface then — it is not part of sign-in.
+
+  - coordinate: google-auth (PyPI)
+    stack: backend-fastapi
+    source: official
+    purpose: Default choice — verify Google ID tokens server-side (Google-aware verifier with built-in certificate handling)
+    lookup:
+      query: "google-auth python verify_oauth2_token latest version clock skew audience"
+      official_sources:
+        - https://googleapis.dev/python/google-auth/latest/
+        - https://developers.google.com/identity/gsi/web/guides/verify-google-id-token
+        - https://pypi.org/project/google-auth/
+      package_candidates:
+        - google-auth
+        - requests
+    notes: >
+      Check the current verifier function signature (audience parameter,
+      clock-skew parameter) for breaking changes, and which HTTP transport
+      extra/companion package the verifier requires. The verifier transport
+      is sync — plan the threadpool dispatch per the stack's async rules.
+
+  - coordinate: PyJWT + cryptography (PyPI)
+    stack: backend-fastapi
+    source: official
+    purpose: Alternative — generic JWT verification against Google's JWKS when the project wants one shared, explicitly-cached verification path
+    lookup:
+      query: "PyJWT PyJWKClient latest version verify RS256 JWKS audience issuer"
+      official_sources:
+        - https://pyjwt.readthedocs.io/
+        - https://pypi.org/project/PyJWT/
+        - https://pypi.org/project/cryptography/
+      package_candidates:
+        - PyJWT
+        - cryptography
+    notes: >
+      Only if chosen over google-auth (see per-stack notes for the decision
+      criteria). Confirm the current JWKS-client API and its caching
+      behavior against auth-core's JWKS rules, and fetch Google's current
+      JWKS/issuer metadata from the official OpenID discovery document
+      rather than hardcoding endpoint URLs.

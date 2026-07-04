@@ -47,7 +47,7 @@
     {
       "id": "F003",
       "title": "Zero-dependency tooling scripts",
-      "status": "planned",
+      "status": "implemented",
       "priority": "p0",
       "depends_on": ["F002"],
       "pack_refs": [],
