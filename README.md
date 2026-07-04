@@ -118,16 +118,33 @@ Full walkthrough with a worked example: [docs/authoring-packs.md](docs/authoring
 
 ## Install
 
+No clone needed — `npx` fetches the repo and runs the installer directly
+(there is no npm-registry package; this uses npx's built-in git-spec support):
+
 ```sh
+npx --yes github:KaisLeungL/PolyRig --copy
+```
+
+`--copy` matters here: without it, the installed skills are symlinked into a
+temporary `npx` cache directory that can be evicted later, which would leave
+dangling links. `--copy` writes real files instead, so the install survives
+independently of the npx cache.
+
+Prefer a local clone if you plan to track updates with `git pull` or want
+symlinks that follow a single checkout:
+
+```sh
+git clone https://github.com/KaisLeungL/PolyRig.git && cd PolyRig
 node scripts/link-skill.mjs
 ```
 
-Plain git repo, zero-dependency Node scripts, no workspace toolchain, no build step.
-By default this installs `skill/polyrig/` and `skill/polyrig-pack-author/` for
-all supported local agent platforms: Claude Code and Codex get native skill
-links; Cursor, Gemini CLI, and OpenCode get managed pointer/context files. To
-install one target only, use
-`--platform claude-code|codex|cursor|gemini-cli|opencode`.
+Either way it's a plain git repo, zero-dependency Node scripts, no workspace
+toolchain, no build step. By default this installs `skill/polyrig/` and
+`skill/polyrig-pack-author/` for all supported local agent platforms: Claude
+Code and Codex get native skill links (or copies, with `--copy`); Cursor,
+Gemini CLI, and OpenCode get managed pointer/context files. To install one
+target only, add `--platform claude-code|codex|cursor|gemini-cli|opencode` to
+either command above.
 
 ## v0.1 scope — golden path
 
