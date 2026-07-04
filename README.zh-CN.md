@@ -41,13 +41,13 @@ v0.1 的验收就是一条端到端叙事：
 
 | 层 | 绑定 | 内容 |
 |---|---|---|
-| 1. 执行层（运行时） | Claude Code 专属 | `skill/claude-code/polyrig/` —— SKILL.md（只含流程、路由、决策树、产物格式；不含知识性文字）+ 模板 |
+| 1. 执行层（运行时） | agent 平台适配层 | `skill/polyrig/` —— SKILL.md（只含流程、路由、决策树、产物格式；不含知识性文字）+ 模板 |
 | 2. 协议与资产层 | agent 中立 | `packs/{stack,domain}/` + `schemas/`（pack、feature_list、manifest 的 JSON Schema） |
 | 3. 生成产物层 | agent 中立，落在目标项目里 | SPEC.md、AGENTS.md、CLAUDE.md、feature_list.json、docs/stacks/、docs/domains/、docs/verify.md、deps.resolved.md、.polyrig/manifest.json、init.plan.md、init.sh |
 
-v1 的执行入口是一个 Claude Code Skill（`/polyrig`），但长期价值绑定在
-**包协议 + 生成的仓库上下文**上，而不是 Claude Code。未来的运行时：Codex、Cursor、
-Gemini CLI、OpenCode 等。
+v1 的执行入口是 PolyRig skill（`/polyrig`），可安装到 Claude Code、Codex、Cursor、
+Gemini CLI 和 OpenCode。长期价值绑定在 **包协议 + 生成的仓库上下文** 上，而不是某一个
+agent 运行时。
 
 ## 包协议概览
 
@@ -64,9 +64,9 @@ Gemini CLI、OpenCode 等。
 - 包的文字部分只放**慢变知识**（决策树、坑点、安全红线）。易变事实（版本号、API
   细节）放在 `deps.yaml` 里，以坐标 + 查询策略的形式存在，装配时在线核实，写入目标
   项目带日期的 `deps.resolved.md`。
-- 三个发现根 —— 内置 `packs/`、用户级 `~/.claude/polyrig-packs/`、项目级
-  `.polyrig/packs/` —— 遵循"越具体越优先"的覆盖规则，并配有显式信任模型
-  （项目级包的脚本默认永不执行）。
+- 发现根 —— 内置 `packs/`、用户级 `~/.polyrig/packs/`（兼容旧的
+  `~/.claude/polyrig-packs/`）、项目级 `.polyrig/packs/` —— 遵循"越具体越优先"的
+  覆盖规则，并配有显式信任模型（项目级包的脚本默认永不执行）。
 - 选中的包知识会被**物理拷贝**进目标项目，随仓库一起走、一起进 git。
 
 完整协议与完整示例：[docs/pack-protocol.md](docs/pack-protocol.md)。
@@ -77,9 +77,10 @@ Gemini CLI、OpenCode 等。
 node scripts/link-skill.mjs
 ```
 
-纯 git 仓库、零依赖 Node 脚本、没有 workspace 工具链、没有构建步骤。这条命令会把
-`skill/claude-code/polyrig/` 链接到 `~/.claude/skills/polyrig`，使 `/polyrig` 在
-Claude Code 中可用。
+纯 git 仓库、零依赖 Node 脚本、没有 workspace 工具链、没有构建步骤。默认会把
+`skill/polyrig/` 安装到所有已支持的本机 agent 平台：Claude Code 和 Codex 使用原生
+skill 链接；Cursor、Gemini CLI 和 OpenCode 写入受管理的 pointer/context 文件。只安装
+单个平台可用 `--platform claude-code|codex|cursor|gemini-cli|opencode`。
 
 ## v0.1 范围 —— 黄金路径
 

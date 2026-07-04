@@ -6,11 +6,11 @@ how packs are discovered and trusted, and why the layers must never blur.
 
 ## The three layers
 
-### Layer 1 — Execution (runtime): Claude-specific
+### Layer 1 — Execution (runtime): agent-platform adapter
 
-Location: `skill/claude-code/polyrig/`
+Location: `skill/polyrig/`
 
-The only Claude Code–specific component in the system. It contains:
+The only runtime-facing component in the system. It contains:
 
 - `SKILL.md` — the `/polyrig` entry point: the seven-phase interview flow,
   context routing, decision trees, and artifact formats. **Only** flow, routing,
@@ -19,9 +19,9 @@ The only Claude Code–specific component in the system. It contains:
   feature_list.json, manifest.json, init.plan.md, init.sh, deps.resolved.md)
   the skill fills in during generation.
 
-This layer is a thin adapter. When other runtimes (Codex, Cursor, Gemini CLI,
-OpenCode) get their own adapters, they will sit as siblings under `skill/` and
-consume exactly the same layers 2 and 3.
+This layer is a thin adapter. The installer exposes it to Claude Code, Codex,
+Cursor, Gemini CLI, and OpenCode using each platform's local convention, while
+the underlying flow and templates remain shared.
 
 ### Layer 2 — Protocol & assets: agent-neutral
 
@@ -60,7 +60,7 @@ verbal context can implement features from the on-disk artifacts alone.
 Packs are discovered from three roots; on id collision the most specific wins:
 
 1. **builtin** — `packs/` in this repository
-2. **user** — `~/.claude/polyrig-packs/`
+2. **user** — `~/.polyrig/packs/` (legacy `~/.claude/polyrig-packs/` is still scanned)
 3. **project** — `.polyrig/packs/` in the target project
 
 Override precedence: **project > user > builtin**.

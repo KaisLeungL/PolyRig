@@ -13,9 +13,10 @@ that AI coding needs: structured requirements, technical decisions with rational
 context routing, dependency lookup strategy, validation routes, and a persistent
 feature state machine — all versionable, reviewable, and **agent-neutral**.
 
-- **v1 execution entry**: a Claude Code Skill (`/polyrig`).
+- **v1 execution entry**: the PolyRig skill (`/polyrig`), installable into
+  supported local agent platforms.
 - **Long-term value binding**: the Pack Protocol + generated repository context,
-  NOT Claude Code. Future runtimes: Codex, Cursor, Gemini CLI, OpenCode, etc.
+  NOT any one agent runtime.
 
 ### Non-goals
 
@@ -39,7 +40,7 @@ The layers must never blur into one "big prompt repository":
 
 | Layer | Binding | Contents |
 |---|---|---|
-| 1. Execution (runtime) | Claude Code specific | `skill/claude-code/polyrig/` — SKILL.md (flow, routing, decision tree, artifact formats ONLY; no knowledge prose) + templates |
+| 1. Execution (runtime) | Agent-platform adapter | `skill/polyrig/` — SKILL.md (flow, routing, decision tree, artifact formats ONLY; no knowledge prose) + templates |
 | 2. Protocol & assets | Agent-neutral | `packs/{stack,domain}/` + `schemas/` (JSON Schemas for pack, feature_list, manifest) |
 | 3. Generated artifacts | Agent-neutral, live in the target project | SPEC.md, AGENTS.md, CLAUDE.md, feature_list.json, docs/stacks/, docs/domains/, docs/verify.md, deps.resolved.md, .polyrig/manifest.json, init.plan.md, init.sh |
 
@@ -54,18 +55,19 @@ polyrig/
   feature_list.json         # implementation plan & state for PolyRig itself
 
   skill/
-    claude-code/
-      polyrig/
-        SKILL.md
-        templates/
-          SPEC.md
-          AGENTS.md
-          CLAUDE.md
-          feature_list.json
-          manifest.json
-          init.plan.md
-          init.sh
-          deps.resolved.md
+    polyrig/
+      SKILL.md
+      agents/
+        openai.yaml
+      templates/
+        SPEC.md
+        AGENTS.md
+        CLAUDE.md
+        feature_list.json
+        manifest.json
+        init.plan.md
+        init.sh
+        deps.resolved.md
 
   packs/
     stack/
@@ -81,7 +83,7 @@ polyrig/
     manifest.schema.json
 
   scripts/                  # zero-dependency Node (.mjs); no workspace toolchain
-    link-skill.mjs          # symlink/copy skill into ~/.claude/skills/polyrig
+    link-skill.mjs          # install skill/polyrig into supported agent platforms
     validate-pack.mjs       # validate a pack dir against pack.schema.json
     build-pack-index.mjs    # scan pack roots, emit discovery index
     doctor.mjs              # env & install sanity check
@@ -154,7 +156,7 @@ trust:
 Three discovery roots, most specific wins on id collision:
 
 1. builtin `packs/` (this repo)
-2. user-level `~/.claude/polyrig-packs/`
+2. user-level `~/.polyrig/packs/` (legacy `~/.claude/polyrig-packs/` is also scanned)
 3. project-level `.polyrig/packs/`
 
 Trust rules (v1):
@@ -261,7 +263,7 @@ This demo is the core narrative of the README.
 
 | Earlier decision | Replaced by |
 |---|---|
-| Standalone agent-agnostic CLI | Claude Code Skill as v1 runtime |
+| Standalone agent-agnostic CLI | PolyRig skill as v1 runtime adapter |
 | "A Claude Code skills project" | Protocol-first positioning; skill is only the entry |
 | npm-workspace monorepo for PolyRig itself | plain git repo, directory-per-concern, zero-dep scripts |
 | One big `third-party-auth` domain pack | split: auth-core + per-provider packs (pulls `requires` into v1) |

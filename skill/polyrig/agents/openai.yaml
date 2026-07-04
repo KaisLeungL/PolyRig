@@ -1,0 +1,4 @@
+interface:
+  display_name: "PolyRig"
+  short_description: "Initialize agent-ready project context"
+  default_prompt: "Use $polyrig to initialize this project as an agent-ready repository."

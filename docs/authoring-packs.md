@@ -30,10 +30,10 @@ decision trees, latency budgets, IME lifecycle traps) no model reconstructs.
 
 ### 2.1 Create the directory
 
-User-level packs live under `~/.claude/polyrig-packs/`, in a
+User-level packs live under `~/.polyrig/packs/`, in a
 `<type>/<short-name>` layout. **The directory path must agree with the pack
 id** — the validator checks both segments. Run
-`mkdir -p ~/.claude/polyrig-packs/domain/voice-ime/knowledge`, then build
+`mkdir -p ~/.polyrig/packs/domain/voice-ime/knowledge`, then build
 toward this shape:
 
 ```
@@ -171,7 +171,7 @@ Packs are discovered from three roots; on id collision the most specific wins
 (**project > user > builtin**):
 
 1. **builtin** — `packs/` in the PolyRig repository
-2. **user** — `~/.claude/polyrig-packs/`
+2. **user** — `~/.polyrig/packs/` (legacy `~/.claude/polyrig-packs/` is still scanned)
 3. **project** — `<target>/.polyrig/packs/`
 
 An override means the consumer gets **your** pack everywhere the id is used —

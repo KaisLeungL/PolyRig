@@ -48,13 +48,14 @@ The layers must never blur into one "big prompt repository"
 
 | Layer | Binding | Contents |
 |---|---|---|
-| 1. Execution (runtime) | Claude Code specific | `skill/claude-code/polyrig/` — SKILL.md (flow, routing, decision tree, artifact formats only; no knowledge prose) + templates |
+| 1. Execution (runtime) | Agent-platform adapter | `skill/polyrig/` — SKILL.md (flow, routing, decision tree, artifact formats only; no knowledge prose) + templates |
 | 2. Protocol & assets | Agent-neutral | `packs/{stack,domain}/` + `schemas/` (JSON Schemas for pack, feature_list, manifest) |
 | 3. Generated artifacts | Agent-neutral, live in the target project | SPEC.md, AGENTS.md, CLAUDE.md, feature_list.json, docs/stacks/, docs/domains/, docs/verify.md, deps.resolved.md, .polyrig/manifest.json, init.plan.md, init.sh |
 
-The v1 execution entry is a Claude Code Skill (`/polyrig`), but the long-term value
-binds to the **Pack Protocol and the generated repository context**, not to Claude
-Code. Future runtimes: Codex, Cursor, Gemini CLI, OpenCode, and others.
+The v1 execution entry is the PolyRig skill (`/polyrig`), installable into
+Claude Code, Codex, Cursor, Gemini CLI, and OpenCode. The long-term value binds
+to the **Pack Protocol and the generated repository context**, not to any one
+agent runtime.
 
 ## Pack protocol overview
 
@@ -72,9 +73,10 @@ Key rules:
   security red lines). Volatile facts (versions, API details) live in `deps.yaml`
   as coordinates + lookup strategy, verified online at assembly time and written to
   the target project's dated `deps.resolved.md`.
-- Three discovery roots — builtin `packs/`, user `~/.claude/polyrig-packs/`,
-  project `.polyrig/packs/` — with most-specific-wins override precedence and an
-  explicit trust model (project-level pack scripts never run by default).
+- Discovery roots — builtin `packs/`, user `~/.polyrig/packs/` (plus legacy
+  `~/.claude/polyrig-packs/`), and project `.polyrig/packs/` — with
+  most-specific-wins override precedence and an explicit trust model
+  (project-level pack scripts never run by default).
 - Selected pack knowledge is **physically copied** into the target project so it
   travels with the repo and enters git.
 
@@ -87,8 +89,10 @@ node scripts/link-skill.mjs
 ```
 
 Plain git repo, zero-dependency Node scripts, no workspace toolchain, no build step.
-This links `skill/claude-code/polyrig/` into `~/.claude/skills/polyrig` so that
-`/polyrig` is available in Claude Code.
+By default this installs `skill/polyrig/` for all supported local agent
+platforms: Claude Code and Codex get native skill links; Cursor, Gemini CLI, and
+OpenCode get managed pointer/context files. To install one target only, use
+`--platform claude-code|codex|cursor|gemini-cli|opencode`.
 
 ## v0.1 scope — golden path
 

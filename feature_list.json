@@ -53,16 +53,16 @@
       "pack_refs": [],
       "acceptance_criteria": [
         "scripts/validate-pack.mjs validates a pack directory against pack.schema.json plus structural rules (knowledge/overview.md and verify.md present; per-stack/ files match pack.yaml stacks; domain packs' requires resolvable)",
-        "scripts/build-pack-index.mjs scans the three discovery roots (builtin, ~/.claude/polyrig-packs, <target>/.polyrig/packs), applies project>user>builtin override precedence, and emits an index JSON including trust source and script presence per pack",
-        "scripts/link-skill.mjs symlinks (or copies with --copy) skill/claude-code/polyrig into ~/.claude/skills/polyrig, idempotently",
+        "scripts/build-pack-index.mjs scans the discovery roots (builtin, ~/.polyrig/packs, legacy ~/.claude/polyrig-packs, <target>/.polyrig/packs), applies project>user>builtin override precedence, and emits an index JSON including trust source and script presence per pack",
+        "scripts/link-skill.mjs installs skill/polyrig into supported agent platforms (Claude Code, Codex, Cursor, Gemini CLI, OpenCode), idempotently",
         "scripts/doctor.mjs checks node version, skill link status, and runs validate-pack over all builtin packs",
         "All scripts run on bare node (no package.json dependencies) and exit non-zero on failure"
       ],
       "verification": {
         "manual": ["Create a deliberately broken pack; validate-pack.mjs reports the specific violation"],
-        "automated": ["node scripts/doctor.mjs"]
+        "automated": ["node scripts/doctor.mjs", "node scripts/test-link-skill.mjs", "node scripts/test-build-pack-index.mjs"]
       },
-      "files_expected": ["scripts/validate-pack.mjs", "scripts/build-pack-index.mjs", "scripts/link-skill.mjs", "scripts/doctor.mjs"],
+      "files_expected": ["scripts/validate-pack.mjs", "scripts/build-pack-index.mjs", "scripts/link-skill.mjs", "scripts/doctor.mjs", "scripts/test-link-skill.mjs", "scripts/test-build-pack-index.mjs"],
       "notes": "Deterministic work only; all user interaction stays in the skill."
     },
     {
@@ -166,14 +166,14 @@
       ],
       "verification": {
         "manual": ["Read-through: templates contain placeholders, not example knowledge"],
-        "automated": ["node -e \"JSON.parse(require('fs').readFileSync('skill/claude-code/polyrig/templates/feature_list.json','utf8'))\""]
+        "automated": ["node -e \"JSON.parse(require('fs').readFileSync('skill/polyrig/templates/feature_list.json','utf8'))\""]
       },
-      "files_expected": ["skill/claude-code/polyrig/templates/SPEC.md", "skill/claude-code/polyrig/templates/AGENTS.md", "skill/claude-code/polyrig/templates/CLAUDE.md", "skill/claude-code/polyrig/templates/feature_list.json", "skill/claude-code/polyrig/templates/manifest.json", "skill/claude-code/polyrig/templates/init.plan.md", "skill/claude-code/polyrig/templates/init.sh", "skill/claude-code/polyrig/templates/deps.resolved.md"],
+      "files_expected": ["skill/polyrig/templates/SPEC.md", "skill/polyrig/templates/AGENTS.md", "skill/polyrig/templates/CLAUDE.md", "skill/polyrig/templates/feature_list.json", "skill/polyrig/templates/manifest.json", "skill/polyrig/templates/init.plan.md", "skill/polyrig/templates/init.sh", "skill/polyrig/templates/deps.resolved.md"],
       "notes": ""
     },
     {
       "id": "F009",
-      "title": "Claude Code skill: /polyrig (SKILL.md)",
+      "title": "Agent-platform skill: /polyrig (SKILL.md)",
       "status": "implemented",
       "priority": "p0",
       "depends_on": ["F003", "F008"],
@@ -185,14 +185,14 @@
         "Assembly performs online version verification per deps.yaml lookup strategies and writes deps.resolved.md with date/source/confidence; staleness warning when last_reviewed exceeds 180 days",
         "Generation copies selected pack knowledge into docs/stacks|domains/, writes all artifacts from templates, and records the audit chain in .polyrig/manifest.json with checksums",
         "Language rule stated explicitly: interaction follows the user's language; generated artifacts are English",
-        "node scripts/link-skill.mjs installs it; /polyrig appears and runs in a fresh Claude Code session"
+        "node scripts/link-skill.mjs installs it for supported agent platforms; /polyrig appears or is discoverable through the platform's managed context in a fresh agent session"
       ],
       "verification": {
         "manual": ["Dry-run the interview in a scratch directory; inspect every generated artifact against SPEC section 5"],
-        "automated": ["node scripts/doctor.mjs"]
+        "automated": ["node scripts/doctor.mjs", "node scripts/test-link-skill.mjs"]
       },
-      "files_expected": ["skill/claude-code/polyrig/SKILL.md"],
-      "notes": "The only Claude-specific component in the system. Implemented and installed (link-skill + doctor pass); not 'verified' because the manual dry-run of the full seven-phase interview is pending — it doubles as the F010 demo."
+      "files_expected": ["skill/polyrig/SKILL.md", "skill/polyrig/agents/openai.yaml"],
+      "notes": "The runtime-facing component is now platform-adapted rather than Claude-specific. Implemented and installed via link-skill smoke tests; not 'verified' because the manual dry-run of the full seven-phase interview is pending — it doubles as the F010 demo."
     },
     {
       "id": "F010",

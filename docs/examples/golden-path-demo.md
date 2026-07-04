@@ -16,7 +16,7 @@ A small real project: **Android app + FastAPI backend with Google Sign-In**
 
 ## Prerequisites (human setup, before the demo)
 
-- [ ] PolyRig installed: `node scripts/link-skill.mjs` (doctor passes: `node scripts/doctor.mjs`)
+- [ ] PolyRig installed for the agent you will use: `node scripts/link-skill.mjs` (doctor passes: `node scripts/doctor.mjs`)
 - [ ] Google Cloud project with OAuth consent screen (testing mode is fine; add your test account)
 - [ ] OAuth client IDs created: one **Web** client (the backend audience), one **Android** client (debug SHA-1 registered)
 - [ ] Android device or emulator with a signed-in Google account
@@ -24,7 +24,7 @@ A small real project: **Android app + FastAPI backend with Google Sign-In**
 
 ## Part 1 — Initialize (interactive session)
 
-1. Create an empty project directory and open a Claude Code session there.
+1. Create an empty project directory and open a fresh agent session there.
 2. Run `/polyrig`. Answer the seven phases; suggested demo answers:
    - Identity: name `sigil-demo`, purpose "demo app with Google Sign-In", monorepo layout (`app/` + `server/`).
    - Stack: select `stack/android` and `stack/backend-fastapi`.

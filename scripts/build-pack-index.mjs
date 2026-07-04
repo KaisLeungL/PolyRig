@@ -8,12 +8,15 @@
 //   --target  Target project directory; adds <target>/.polyrig/packs as the
 //             project-level root. Without it only builtin + user roots scan.
 //   --out     Write the index JSON to this file instead of stdout.
-//   --home    Home directory override (for tests); the user-level root is
+//   --home    Home directory override (for tests); user-level roots are
+//             <home>/.polyrig/packs and the legacy
 //             <home>/.claude/polyrig-packs. Default: os.homedir().
 //
-// Discovery roots (precedence on id collision: project > user > builtin):
+// Discovery roots (precedence on id collision: project > neutral user >
+// legacy user > builtin):
 //   builtin  <repo>/packs
-//   user     <home>/.claude/polyrig-packs
+//   user     <home>/.polyrig/packs
+//   user     <home>/.claude/polyrig-packs (legacy)
 //   project  <target>/.polyrig/packs
 //
 // Output shape: { generated_at, roots, packs, overrides }. Each pack carries
@@ -61,7 +64,8 @@ function dirHasFiles(p) {
 // Roots listed in ascending precedence so later scans override earlier ones.
 const roots = [
   { source: 'builtin', path: resolve(join(REPO_ROOT, 'packs')) },
-  { source: 'user', path: resolve(join(home, '.claude', 'polyrig-packs')) },
+  { source: 'user', path: resolve(join(home, '.claude', 'polyrig-packs')), legacy: true },
+  { source: 'user', path: resolve(join(home, '.polyrig', 'packs')) },
 ];
 if (target !== null) {
   if (!isDir(target)) usage(`--target directory does not exist: ${resolve(target)}`);
