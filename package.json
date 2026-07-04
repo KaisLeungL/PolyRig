@@ -1,0 +1,17 @@
+{
+  "name": "polyrig",
+  "version": "0.1.0",
+  "description": "Universal AI harness pack protocol and context assembly system. Running this package's bin installs the /polyrig and /polyrig-pack-author skills for your local agent platforms (Claude Code, Codex, Cursor, Gemini CLI, OpenCode) — the same thing scripts/link-skill.mjs does.",
+  "license": "MIT",
+  "homepage": "https://github.com/KaisLeungL/PolyRig",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KaisLeungL/PolyRig.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "polyrig": "./scripts/link-skill.mjs"
+  }
+}
