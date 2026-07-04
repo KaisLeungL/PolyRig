@@ -1,0 +1,104 @@
+# packs/stack/backend-fastapi/deps.yaml
+# Coordinates + lookup strategies. No pinned versions: resolve online at
+# assembly time and record results in the target project's deps.resolved.md.
+version_policy: verify_latest_before_use
+dependencies:
+  - coordinate: fastapi (PyPI)
+    purpose: Web framework — routing, dependency injection, OpenAPI generation
+    lookup:
+      query: "fastapi latest version release notes breaking changes"
+      official_sources:
+        - https://fastapi.tiangolo.com/release-notes/
+        - https://pypi.org/project/fastapi/
+      package_candidates: [fastapi]
+    notes: Check the release notes for changes to lifespan handling, dependency injection, and the pinned pydantic major it supports.
+
+  - coordinate: uvicorn (PyPI)
+    purpose: ASGI server for development and production
+    lookup:
+      query: "uvicorn latest version standard extras deployment"
+      official_sources:
+        - https://www.uvicorn.org/
+        - https://pypi.org/project/uvicorn/
+      package_candidates: [uvicorn, "uvicorn[standard]"]
+    notes: Prefer the standard extras for production-grade event loop and websocket support; confirm current extras naming.
+
+  - coordinate: pydantic (PyPI)
+    purpose: Data validation — request/response schemas
+    lookup:
+      query: "pydantic latest major version migration guide"
+      official_sources:
+        - https://docs.pydantic.dev/latest/
+        - https://pypi.org/project/pydantic/
+      package_candidates: [pydantic]
+    notes: CRITICAL — determine the installed major before writing any model code; validator/config idioms differ between majors (see pitfalls.md). Confirm compatibility with the resolved fastapi version.
+
+  - coordinate: pydantic-settings (PyPI)
+    purpose: Settings management from environment variables and .env files
+    lookup:
+      query: "pydantic-settings latest version BaseSettings env file"
+      official_sources:
+        - https://docs.pydantic.dev/latest/concepts/pydantic_settings/
+        - https://pypi.org/project/pydantic-settings/
+      package_candidates: [pydantic-settings]
+    notes: Settings support was split out of the core pydantic package; verify it is a separate install for the resolved pydantic major.
+
+  - coordinate: sqlalchemy (PyPI)
+    purpose: ORM and database toolkit, used in async mode
+    lookup:
+      query: "sqlalchemy latest version async engine asyncio support"
+      official_sources:
+        - https://docs.sqlalchemy.org/
+        - https://pypi.org/project/sqlalchemy/
+      package_candidates: [sqlalchemy, "sqlalchemy[asyncio]"]
+    notes: Verify current async extras naming and pick an async driver matching the chosen database (e.g. asyncpg for PostgreSQL, aiosqlite for SQLite) — resolve the driver package at the same time.
+
+  - coordinate: alembic (PyPI)
+    purpose: Database schema migrations for SQLAlchemy
+    lookup:
+      query: "alembic latest version async env.py template sqlalchemy compatibility"
+      official_sources:
+        - https://alembic.sqlalchemy.org/
+        - https://pypi.org/project/alembic/
+      package_candidates: [alembic]
+    notes: Confirm compatibility with the resolved sqlalchemy version and use the async-aware env.py setup when the engine is async.
+
+  - coordinate: httpx (PyPI)
+    purpose: Async HTTP client for outbound calls; also drives API tests
+    lookup:
+      query: "httpx latest version release notes AsyncClient"
+      official_sources:
+        - https://www.python-httpx.org/
+        - https://pypi.org/project/httpx/
+      package_candidates: [httpx]
+    notes: Check how the current version wires an in-process ASGI app into a test client (transport API has churned) before writing test fixtures.
+
+  - coordinate: pytest (PyPI)
+    purpose: Test runner
+    lookup:
+      query: "pytest latest version release notes"
+      official_sources:
+        - https://docs.pytest.org/
+        - https://pypi.org/project/pytest/
+      package_candidates: [pytest]
+    notes: Confirm compatibility with the resolved pytest-asyncio version.
+
+  - coordinate: pytest-asyncio (PyPI)
+    purpose: Run async test functions under pytest
+    lookup:
+      query: "pytest-asyncio latest version asyncio_mode configuration"
+      official_sources:
+        - https://pytest-asyncio.readthedocs.io/
+        - https://pypi.org/project/pytest-asyncio/
+      package_candidates: [pytest-asyncio, anyio]
+    notes: The asyncio_mode / event-loop fixture configuration has churned across releases — verify the current recommended pyproject.toml settings. anyio's pytest plugin is the main alternative; pick one, not both.
+
+  - coordinate: python (interpreter)
+    purpose: Python interpreter version policy for the project
+    lookup:
+      query: "python supported versions release schedule end of life"
+      official_sources:
+        - https://devguide.python.org/versions/
+        - https://www.python.org/downloads/
+      package_candidates: []
+    notes: Policy, not a package — pick the newest stable minor that all resolved dependencies support (cross-check each package's declared requires-python), and record the chosen version in pyproject.toml requires-python and the lockfile.

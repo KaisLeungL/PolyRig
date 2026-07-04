@@ -1,0 +1,13 @@
+id: stack/android
+type: stack
+version: 0.1.0
+last_reviewed: 2026-07-04
+summary: Android app stack conventions — module structure, Gradle/AGP/Kotlin compatibility discipline, Compose-first UI, architecture defaults, signing and release pitfalls, verification routes
+requires: []
+conflicts: []
+provides: [android-app]
+stacks: []
+trust:
+  level: builtin
+  scripts_enabled_by_default: false
+  requires_confirmation: false

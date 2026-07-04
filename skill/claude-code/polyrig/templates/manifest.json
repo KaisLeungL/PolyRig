@@ -1,0 +1,20 @@
+{
+  "$comment": "PolyRig .polyrig/manifest.json template — audit chain, governed by schemas/manifest.schema.json. polyrig: fill every {{PLACEHOLDER}}; emit one selected_packs entry per selected pack (the single entry below is the shape to repeat); record any discovery-root collisions in overrides (keep [] when none). IMPORTANT: DELETE this entire $comment key when instantiating — the manifest schema sets additionalProperties:false and does not permit it. Field notes: generated_at is an RFC 3339 date-time (e.g. 2026-07-04T13:30:00Z); language records the interview language (interaction) and artifact language (artifacts, normally 'en'); per pack: source is builtin|user|project, last_reviewed is the YYYY-MM-DD date from the pack's pack.yaml, copied_to lists target-relative paths the knowledge was copied to, checksum is 'sha256:' + 64 lowercase hex chars of the copied content.",
+  "polyrig_version": "{{POLYRIG_VERSION}}",
+  "generated_at": "{{GENERATED_AT_DATETIME}}",
+  "language": {
+    "interaction": "{{INTERACTION_LANGUAGE}}",
+    "artifacts": "{{ARTIFACTS_LANGUAGE}}"
+  },
+  "selected_packs": [
+    {
+      "id": "{{PACK_ID}}",
+      "version": "{{PACK_VERSION}}",
+      "source": "{{PACK_SOURCE}}",
+      "last_reviewed": "{{PACK_LAST_REVIEWED_DATE}}",
+      "copied_to": ["{{PACK_COPIED_TO_PATH}}"],
+      "checksum": "sha256:{{PACK_CHECKSUM_HEX64}}"
+    }
+  ],
+  "overrides": []
+}

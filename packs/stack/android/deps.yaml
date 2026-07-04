@@ -1,0 +1,122 @@
+# packs/stack/android/deps.yaml
+#
+# Dependency coordinates + lookup strategy. NO pinned versions live here or in
+# knowledge prose. At assembly time the agent executes each lookup, verifies
+# the current version and compatibility online, and records the result in the
+# target project's deps.resolved.md (dated, sourced, confidence-rated).
+version_policy: verify_latest_before_use
+dependencies:
+  - coordinate: com.android.application / com.android.library (Gradle plugins)
+    stack: android
+    purpose: Android Gradle Plugin (AGP) — build system core; sets the required Gradle and JDK versions
+    lookup:
+      query: "Android Gradle plugin latest stable release notes Gradle compatibility"
+      official_sources:
+        - https://developer.android.com/build/releases/gradle-plugin
+        - https://maven.google.com/
+    notes: >
+      AGP, Gradle, Kotlin, and JDK move in lockstep. Resolve the full
+      compatible set (AGP <-> required Gradle <-> required JDK) from the AGP
+      release notes before writing any build file, and record the verified
+      combination in deps.resolved.md.
+
+  - coordinate: org.jetbrains.kotlin.android / org.jetbrains.kotlin.plugin.compose (Gradle plugins)
+    stack: android
+    purpose: Kotlin Android plugin and Compose compiler plugin
+    lookup:
+      query: "Kotlin latest stable release Android Gradle plugin compatibility Compose compiler Gradle plugin"
+      official_sources:
+        - https://kotlinlang.org/docs/releases.html
+        - https://developer.android.com/jetpack/androidx/releases/compose-kotlin
+    notes: >
+      Verify the Kotlin version against both the chosen AGP version and the
+      Compose compiler compatibility mapping. Since the Compose compiler moved
+      into the Kotlin repository, confirm which mechanism the resolved Kotlin
+      version uses before configuring it.
+
+  - coordinate: androidx.core:core-ktx
+    stack: android
+    purpose: AndroidX core Kotlin extensions
+    lookup:
+      query: "androidx core-ktx latest stable version"
+      official_sources:
+        - https://developer.android.com/jetpack/androidx/releases/core
+        - https://maven.google.com/
+    notes: Check the release page for the current stable line; avoid alpha/beta unless a needed API requires it.
+
+  - coordinate: androidx.lifecycle:lifecycle-runtime-ktx / lifecycle-viewmodel-compose
+    stack: android
+    purpose: Lifecycle-aware components and ViewModel integration (including Compose)
+    lookup:
+      query: "androidx lifecycle latest stable version release notes"
+      official_sources:
+        - https://developer.android.com/jetpack/androidx/releases/lifecycle
+        - https://maven.google.com/
+    notes: All lifecycle artifacts must resolve to the same version line; verify which viewmodel/compose artifacts are current before adding.
+
+  - coordinate: androidx.activity:activity-compose
+    stack: android
+    purpose: Activity integration for Compose (setContent, back handling, result APIs)
+    lookup:
+      query: "androidx activity-compose latest stable version"
+      official_sources:
+        - https://developer.android.com/jetpack/androidx/releases/activity
+        - https://maven.google.com/
+    notes: Verify predictive-back related API changes in the release notes when resolving.
+
+  - coordinate: androidx.compose:compose-bom (platform/BOM import)
+    stack: android
+    purpose: Compose UI toolkit — single BOM pins all Compose library versions consistently
+    lookup:
+      query: "Compose BOM latest version mapping library versions"
+      official_sources:
+        - https://developer.android.com/develop/ui/compose/bom/bom-mapping
+        - https://developer.android.com/jetpack/androidx/releases/compose
+    notes: >
+      Always import Compose via the BOM and omit versions on individual
+      Compose artifacts. Cross-check the resolved BOM against the Compose
+      compiler / Kotlin compatibility mapping resolved above.
+
+  - coordinate: com.google.dagger:hilt-android + com.google.dagger.hilt.android (Gradle plugin) + androidx.hilt:*
+    stack: android
+    purpose: Hilt dependency injection (runtime, compiler, plugin, androidx integrations)
+    lookup:
+      query: "Hilt Android latest stable version dagger release notes KSP"
+      official_sources:
+        - https://developer.android.com/training/dependency-injection/hilt-android
+        - https://github.com/google/dagger/releases
+    notes: >
+      Runtime, compiler, and Gradle plugin must share one version. Verify
+      whether the resolved version uses KSP (and which KSP version matches the
+      resolved Kotlin) rather than kapt. androidx.hilt integration artifacts
+      version independently — check their release page separately.
+
+  - coordinate: junit:junit
+    stack: android
+    purpose: Local JVM unit tests
+    lookup:
+      query: "JUnit latest stable version Android local unit tests"
+      official_sources:
+        - https://junit.org/
+        - https://mvnrepository.com/artifact/junit/junit
+    notes: Decide JUnit 4 vs JUnit 5 posture at resolution time; Android instrumented testing tooling assumes JUnit 4 style runners unless extensions are added.
+
+  - coordinate: androidx.test.ext:junit + androidx.test:runner + androidx.test:core
+    stack: android
+    purpose: AndroidX test framework for instrumented tests
+    lookup:
+      query: "androidx test latest stable versions release notes"
+      official_sources:
+        - https://developer.android.com/jetpack/androidx/releases/test
+        - https://maven.google.com/
+    notes: androidx.test artifacts version independently of each other; take the current stable of each from the release page rather than assuming one shared version.
+
+  - coordinate: androidx.test.espresso:espresso-core
+    stack: android
+    purpose: UI instrumented testing for View-based and hybrid screens
+    lookup:
+      query: "Espresso latest stable version androidx test"
+      official_sources:
+        - https://developer.android.com/jetpack/androidx/releases/test
+        - https://maven.google.com/
+    notes: For pure Compose screens prefer the Compose UI test artifacts (covered by the Compose BOM) over Espresso; Espresso remains needed for View interop.

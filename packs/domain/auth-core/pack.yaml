@@ -1,0 +1,13 @@
+id: domain/auth-core
+type: domain
+version: 0.1.0
+last_reviewed: 2026-07-04
+summary: Provider-agnostic authentication foundation (OAuth2/OIDC flow selection, token and session handling, CSRF/nonce/state, secure storage principles)
+requires: []
+conflicts: []
+provides: [auth-core]
+stacks: []   # deliberately empty: this knowledge applies to any stack; provider packs add per-stack notes
+trust:
+  level: builtin
+  scripts_enabled_by_default: false
+  requires_confirmation: false

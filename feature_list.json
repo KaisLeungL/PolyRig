@@ -7,7 +7,7 @@
     {
       "id": "F001",
       "title": "Repository skeleton and bilingual README",
-      "status": "planned",
+      "status": "implemented",
       "priority": "p0",
       "depends_on": [],
       "pack_refs": [],
@@ -27,7 +27,7 @@
     {
       "id": "F002",
       "title": "Protocol schemas: pack, feature_list, manifest",
-      "status": "planned",
+      "status": "implemented",
       "priority": "p0",
       "depends_on": ["F001"],
       "pack_refs": [],
@@ -68,7 +68,7 @@
     {
       "id": "F004",
       "title": "Pack: stack/android",
-      "status": "planned",
+      "status": "implemented",
       "priority": "p0",
       "depends_on": ["F002"],
       "pack_refs": ["stack/android"],
@@ -89,7 +89,7 @@
     {
       "id": "F005",
       "title": "Pack: stack/backend-fastapi",
-      "status": "planned",
+      "status": "implemented",
       "priority": "p0",
       "depends_on": ["F002"],
       "pack_refs": ["stack/backend-fastapi"],
@@ -110,7 +110,7 @@
     {
       "id": "F006",
       "title": "Pack: domain/auth-core",
-      "status": "planned",
+      "status": "implemented",
       "priority": "p0",
       "depends_on": ["F002"],
       "pack_refs": ["domain/auth-core"],
@@ -153,7 +153,7 @@
     {
       "id": "F008",
       "title": "Artifact templates",
-      "status": "planned",
+      "status": "implemented",
       "priority": "p0",
       "depends_on": ["F002"],
       "pack_refs": [],
