@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kaisleung/polyrig/schemas/pack.schema.json",
+  "title": "PolyRig pack.yaml",
+  "description": "Metadata for a PolyRig pack (packs/<type>/<id>/pack.yaml). The instance format is YAML; validation is applied to the object obtained after parsing the YAML. A pack is a pure data directory: this file plus knowledge/, verify.md, and optionally deps.yaml and scripts/.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "type", "version", "last_reviewed", "summary"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^(stack|domain)/[a-z0-9-]+$",
+      "description": "Pack identifier: '<type>/<short-name>', e.g. 'stack/android' or 'domain/auth-google'. Must agree with the pack's directory path and with the 'type' field."
+    },
+    "type": {
+      "type": "string",
+      "enum": ["stack", "domain"],
+      "description": "Pack type. 'stack' packs carry framework conventions, project structure, and build/verify commands; 'domain' packs carry business domain knowledge."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+      "description": "Semantic version of the pack content, e.g. '0.1.0'."
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Date (YYYY-MM-DD) the pack content was last reviewed by a human. Older than the staleness threshold (default 180 days) triggers a warning during assembly."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One-line description of what the pack covers."
+    },
+    "requires": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string",
+        "pattern": "^(stack|domain)/[a-z0-9-]+$"
+      },
+      "uniqueItems": true,
+      "description": "Ids of packs this pack depends on, e.g. domain/auth-google requires [domain/auth-core]. Resolved during assembly."
+    },
+    "conflicts": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string",
+        "pattern": "^(stack|domain)/[a-z0-9-]+$"
+      },
+      "uniqueItems": true,
+      "description": "Ids of packs that must not be selected together with this pack."
+    },
+    "provides": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "description": "Capability tags this pack provides, e.g. ['google-sign-in']."
+    },
+    "stacks": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      },
+      "uniqueItems": true,
+      "description": "Stack short-names (e.g. 'android', 'backend-fastapi') covered by this pack's knowledge/per-stack/ notes. Meaningful for domain packs; each listed stack should have a matching knowledge/per-stack/<stack>.md."
+    },
+    "trust": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Trust declaration for the pack, evaluated together with the discovery root it was found in (builtin/user/project rules take precedence over what a pack claims for itself).",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["builtin", "user", "project", "remote"],
+          "description": "Trust level the pack is authored for. 'remote' is unsupported in v1."
+        },
+        "scripts_enabled_by_default": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the pack's scripts/ may run without per-run confirmation. Effective only within the trust rules of the discovery root; project-level pack scripts never run by default regardless of this flag."
+        },
+        "requires_confirmation": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether selecting this pack (and especially running its scripts) requires explicit user confirmation during assembly."
+        }
+      }
+    }
+  }
+}

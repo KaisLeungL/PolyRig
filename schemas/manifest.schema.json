@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kaisleung/polyrig/schemas/manifest.schema.json",
+  "title": "PolyRig .polyrig/manifest.json",
+  "description": "Audit chain written into the target project at generation time. Records which PolyRig version ran, which packs were selected (with source, checksum, and where their knowledge was copied), and any discovery-root overrides that were applied. Contains everything a future upgrade command needs.",
+  "type": "object",
+  "required": ["polyrig_version", "generated_at", "language", "selected_packs"],
+  "properties": {
+    "polyrig_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version of PolyRig that generated the artifacts, e.g. '0.1.0'."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC 3339 date-time when generation ran, e.g. '2026-07-04T13:30:00Z'."
+    },
+    "language": {
+      "type": "object",
+      "required": ["interaction", "artifacts"],
+      "description": "Language rule applied during the interview: interaction follows the user's language; generated artifacts are English.",
+      "properties": {
+        "interaction": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Language used for the interview, e.g. 'zh-CN'."
+        },
+        "artifacts": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Language of the generated artifacts, e.g. 'en'."
+        }
+      },
+      "additionalProperties": false
+    },
+    "selected_packs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/selected_pack" },
+      "description": "Every pack that was selected and copied into the target project."
+    },
+    "overrides": {
+      "type": "array",
+      "default": [],
+      "items": { "$ref": "#/$defs/override" },
+      "description": "Discovery-root overrides that were detected and announced during assembly (project > user > builtin)."
+    }
+  },
+  "$defs": {
+    "selected_pack": {
+      "type": "object",
+      "required": ["id", "version", "source", "last_reviewed", "copied_to", "checksum"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^(stack|domain)/[a-z0-9-]+$",
+          "description": "Pack id, e.g. 'domain/auth-google'."
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pack version at selection time (semver string from pack.yaml)."
+        },
+        "source": {
+          "type": "string",
+          "enum": ["builtin", "user", "project"],
+          "description": "Discovery root the pack was taken from. 'remote' is unsupported in v1 and therefore not permitted here."
+        },
+        "last_reviewed": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "description": "last_reviewed date from the pack's pack.yaml at selection time."
+        },
+        "copied_to": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Target-project-relative paths the pack's knowledge was physically copied to, e.g. ['docs/domains/auth-google/']."
+        },
+        "checksum": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "Content checksum of the pack as copied, 'sha256:<hex>'."
+        }
+      },
+      "additionalProperties": false
+    },
+    "override": {
+      "type": "object",
+      "required": ["id", "winning_source", "losing_source"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^(stack|domain)/[a-z0-9-]+$",
+          "description": "Pack id that collided across discovery roots."
+        },
+        "winning_source": {
+          "type": "string",
+          "enum": ["builtin", "user", "project"],
+          "description": "Discovery root whose copy of the pack was used (most specific wins)."
+        },
+        "losing_source": {
+          "type": "string",
+          "enum": ["builtin", "user", "project"],
+          "description": "Discovery root whose copy of the pack was shadowed."
+        },
+        "winning_path": {
+          "type": "string",
+          "description": "Filesystem path of the winning pack, as announced during assembly."
+        },
+        "carries_scripts": {
+          "type": "boolean",
+          "description": "Whether the winning pack carries a scripts/ directory (relevant to the trust rules)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Review action or other context recorded when the override was announced."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
