@@ -1,6 +1,6 @@
 # stack/android — Verification routes
 
-**Rule: a feature is not done until the relevant route below passes.** Never
+**Rule: a feature is not done until the relevant route below passes.** Never [Evidence: E017, E004, E011]
 set a feature to `verified` in `feature_list.json` on the strength of "it
 compiles" or a debug-only run. Record which routes ran and their outcomes in
 the feature's verification notes.
@@ -11,23 +11,23 @@ the feature's verification notes.
    Compiles all variants and runs lint + unit tests as configured. On large
    projects, `./gradlew assembleDebug assembleRelease` is an acceptable
    faster substitute for compile verification, but `build` is the default.
-   The release variant must compile with minification enabled — a feature
+   The release variant must compile with minification enabled — a feature [Evidence: E004, E011]
    that only builds on debug fails this route (see pitfalls: R8 keep rules).
 
 2. **Lint** — `./gradlew lint`
-   Zero new errors. Do not suppress a lint error to pass; either fix it or
+   Zero new errors. Do not suppress a lint error to pass; either fix it or [Evidence: E021]
    document a reviewed baseline entry with justification.
 
 3. **Unit tests** — `./gradlew test`
    All local JVM tests pass. New logic in ViewModels, repositories, and
-   mappers must arrive with unit tests; a feature whose logic is untestable
+   mappers must arrive with unit tests; a feature whose logic is untestable [Evidence: E017, E006]
    without a device is a design smell (see overview: architecture defaults).
 
 4. **Instrumented tests** — `./gradlew connectedCheck`
    Requires a connected device or running emulator; verify one is available
    first (`adb devices` shows a `device`-state entry) — otherwise the task
    fails for environmental reasons, which is not a feature failure.
-   When it is REQUIRED (not optional) for a feature:
+   When it is REQUIRED (not optional) for a feature: [Evidence: E017]
    - the feature touches UI navigation, permissions, or lifecycle behavior;
    - the feature depends on device capabilities (storage, camera, biometrics,
      notifications, background work);
@@ -57,5 +57,5 @@ feature is user-facing:
 
 If a route fails because of missing SDK components, an unavailable emulator,
 or a Gradle/AGP/Kotlin/JDK mismatch, fix the environment (see deps.yaml
-lookups for the compatibility matrix) — do not weaken the route, and do not
+lookups for the compatibility matrix) — do not weaken the route, and do not [Evidence: E017, E003]
 mark the feature verified with a note that "tests couldn't run".

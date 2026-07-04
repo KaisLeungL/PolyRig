@@ -1,21 +1,21 @@
 # stack/android — Pitfalls and red lines
 
 Known traps for agents implementing features on this stack. Format per item:
-symptom, why it happens, the rule. Items marked **RED LINE** are security
-rules that must never be violated regardless of convenience.
+symptom, why it happens, the rule. Items marked **RED LINE** are security [Evidence: E009, E010]
+rules that must never be violated regardless of convenience. [Evidence: E009, E010]
 
-## RED LINE: keystore and signing hygiene
+## RED LINE: keystore and signing hygiene [Evidence: E009]
 
 Symptom: a release keystore, `key.properties`, or a `signingConfig` block with
 plaintext passwords appears in version control. This happens because signing
 setup tutorials show inline credentials and the debug flow "just works". A
 leaked upload/signing key is unrevocable identity for the app. Rule: keystores
-and their passwords never enter VCS. Load them from environment variables or a
+and their passwords never enter VCS. [Evidence: E009] Load them from environment variables or a
 gitignored `gradle.properties`/`key.properties` file referenced by path; commit
 only the *reading* logic. Add keystore file patterns to `.gitignore` in the
 same change that introduces signing.
 
-## RED LINE: secrets in BuildConfig, resources, or manifest
+## RED LINE: secrets in BuildConfig, resources, or manifest [Evidence: E010]
 
 Symptom: API keys, tokens, or backend secrets placed in `BuildConfig` fields,
 `strings.xml`, or manifest metadata "so the app can use them". Anything
@@ -23,7 +23,7 @@ compiled into an APK is extractable in minutes; obfuscation does not change
 this. Rule: an APK may only carry values you accept as public (e.g. a
 rate-limited client ID designed for embedding). Real secrets stay server-side;
 the app authenticates a *user or install*, and the server holds the secret.
-Never commit even "public" keys with write scopes.
+Never commit even "public" keys with write scopes. [Evidence: E010]
 
 ## R8/ProGuard keep-rule traps
 
@@ -32,7 +32,7 @@ Symptom: release build crashes with `ClassNotFoundException`,
 Minification strips or renames anything reached only via reflection —
 serializers, JNI, `Class.forName`, XML-referenced classes. Rule: every
 reflection-dependent library needs its consumer keep rules verified;
-every hand-written keep rule needs a comment saying *why*. Never "fix" a
+every hand-written keep rule needs a comment saying *why*. [Evidence: E011] Never "fix" a
 release crash with `-dontobfuscate`/`-dontshrink` blanket rules — find the
 missing keep target. Broad `-keep class com.example.** { *; }` rules are debt.
 
@@ -58,11 +58,11 @@ surface during development, not in production ANR dashboards.
 
 Symptom: crash or blank screen when returning to the app after backgrounding —
 often unreproducible in normal testing. The OS kills backgrounded processes
-freely; ViewModels do NOT survive process death, only `SavedStateHandle` /
+freely; ViewModels do NOT survive process death; [Evidence: E013] only `SavedStateHandle` /
 saved-instance-state and persistent storage do. Rule: any state needed to
-reconstruct the current screen (IDs, form input, navigation arguments) must be
-in `SavedStateHandle` or persisted; never assume an in-memory singleton or
-ViewModel field is still populated on re-entry. Test with the developer
+reconstruct the current screen (IDs, form input, navigation arguments) must be in `SavedStateHandle` or persisted; [Evidence: E013]
+never assume an in-memory singleton or ViewModel field is still populated on re-entry. [Evidence: E013]
+Test with the developer
 option "Don't keep activities" or by killing the process while backgrounded.
 
 ## Back stack and deep-link traps
@@ -73,8 +73,7 @@ inconsistently. Deep links synthesize a back stack that differs from organic
 navigation, and ad-hoc launch flags fight the navigation library. Rule: define
 one navigation graph as the single owner of back-stack behavior; declare deep
 links in that graph rather than juggling intent flags; explicitly test the
-back-press path from every deep-link entry point. Do not intercept back with
-legacy key handling — use the navigation library's supported back APIs so
+back-press path from every deep-link entry point. Do not intercept back with legacy key handling — use the navigation library's supported back APIs so [Evidence: E014]
 predictive back keeps working.
 
 ## Dependency bloat and transitive version conflicts
@@ -87,7 +86,7 @@ imports) wherever a library family publishes one, so the family stays
 internally consistent; declare every directly-used dependency explicitly
 instead of leaning on transitives; before adding a new library, check whether
 an existing dependency already covers the need. Audit the dependency tree
-when a resolution error appears — do not force versions blindly.
+when a resolution error appears — do not force versions blindly. [Evidence: E015]
 
 ## Emulator-vs-device behavioral gaps
 
@@ -106,6 +105,5 @@ Symptom: rotating the device resets screen state, loses scroll position, or
 re-fires one-shot effects (toasts, navigation) on every rotation. Activities
 recreate on configuration change; code that treats `onCreate` as
 "runs once" re-triggers work. Rule: screen state lives in the ViewModel or
-saved state, never in Activity/Fragment fields; one-shot events must be
-modeled as consumable (handled-once) rather than as sticky state; rotation is
+saved state, never in Activity/Fragment fields; [Evidence: E013] one-shot events must be modeled as consumable (handled-once) rather than as sticky state; [Evidence: E013] rotation is
 part of the manual smoke check for every new screen.

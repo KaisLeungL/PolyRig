@@ -9,6 +9,7 @@ dependencies:
   - coordinate: com.android.application / com.android.library (Gradle plugins)
     stack: android
     purpose: Android Gradle Plugin (AGP) — build system core; sets the required Gradle and JDK versions
+    evidence: [E003]
     lookup:
       query: "Android Gradle plugin latest stable release notes Gradle compatibility"
       official_sources:
@@ -23,6 +24,7 @@ dependencies:
   - coordinate: org.jetbrains.kotlin.android / org.jetbrains.kotlin.plugin.compose (Gradle plugins)
     stack: android
     purpose: Kotlin Android plugin and Compose compiler plugin
+    evidence: [E003, E019]
     lookup:
       query: "Kotlin latest stable release Android Gradle plugin compatibility Compose compiler Gradle plugin"
       official_sources:
@@ -37,6 +39,7 @@ dependencies:
   - coordinate: androidx.core:core-ktx
     stack: android
     purpose: AndroidX core Kotlin extensions
+    evidence: [E018]
     lookup:
       query: "androidx core-ktx latest stable version"
       official_sources:
@@ -47,6 +50,7 @@ dependencies:
   - coordinate: androidx.lifecycle:lifecycle-runtime-ktx / lifecycle-viewmodel-compose
     stack: android
     purpose: Lifecycle-aware components and ViewModel integration (including Compose)
+    evidence: [E006, E018]
     lookup:
       query: "androidx lifecycle latest stable version release notes"
       official_sources:
@@ -57,6 +61,7 @@ dependencies:
   - coordinate: androidx.activity:activity-compose
     stack: android
     purpose: Activity integration for Compose (setContent, back handling, result APIs)
+    evidence: [E014, E018]
     lookup:
       query: "androidx activity-compose latest stable version"
       official_sources:
@@ -67,6 +72,7 @@ dependencies:
   - coordinate: androidx.compose:compose-bom (platform/BOM import)
     stack: android
     purpose: Compose UI toolkit — single BOM pins all Compose library versions consistently
+    evidence: [E005, E015, E019]
     lookup:
       query: "Compose BOM latest version mapping library versions"
       official_sources:
@@ -80,6 +86,7 @@ dependencies:
   - coordinate: com.google.dagger:hilt-android + com.google.dagger.hilt.android (Gradle plugin) + androidx.hilt:*
     stack: android
     purpose: Hilt dependency injection (runtime, compiler, plugin, androidx integrations)
+    evidence: [E007, E018]
     lookup:
       query: "Hilt Android latest stable version dagger release notes KSP"
       official_sources:
@@ -94,6 +101,7 @@ dependencies:
   - coordinate: junit:junit
     stack: android
     purpose: Local JVM unit tests
+    evidence: [E020]
     lookup:
       query: "JUnit latest stable version Android local unit tests"
       official_sources:
@@ -104,6 +112,7 @@ dependencies:
   - coordinate: androidx.test.ext:junit + androidx.test:runner + androidx.test:core
     stack: android
     purpose: AndroidX test framework for instrumented tests
+    evidence: [E017, E018]
     lookup:
       query: "androidx test latest stable versions release notes"
       official_sources:
@@ -114,6 +123,7 @@ dependencies:
   - coordinate: androidx.test.espresso:espresso-core
     stack: android
     purpose: UI instrumented testing for View-based and hybrid screens
+    evidence: [E017, E018]
     lookup:
       query: "Espresso latest stable version androidx test"
       official_sources:
