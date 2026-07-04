@@ -2,27 +2,27 @@
 
 Each entry: symptom → why it happens → the rule. Red lines are non-negotiable.
 
-## CORS misconfiguration — RED LINE
+## CORS misconfiguration — RED LINE [Evidence: E009]
 
 - **Symptom:** browser requests fail with opaque CORS errors, or — worse —
   everything works because the config is wide open.
 - **Why:** `allow_origins=["*"]` combined with `allow_credentials=True` is
   either rejected by browsers or, where a framework "helpfully" echoes the
   Origin header back, silently grants any site credentialed access to your API.
-- **Rule:** never wildcard origins on an API that uses cookies or credentialed
+- **Rule:** never wildcard origins on an API that uses cookies or credentialed [Evidence: E009]
   requests. List exact origins from settings. Wildcard is acceptable only for a
   truly public, credential-free API — and that is an explicit decision, not a
-  default left in place.
+  default left in place. [Evidence: E009]
 
-## Secrets in code or repo — RED LINE
+## Secrets in code or repo — RED LINE [Evidence: E010]
 
 - **Symptom:** a key, password, or signing secret appears in a source file,
-  a committed `.env`, or a default value in the Settings class.
-- **Why:** repo history is forever; anything committed is leaked. Defaults in
+  a committed `.env`, or a default value in the Settings class. [Evidence: E010]
+- **Why:** repo history is forever; anything committed is leaked. Defaults in [Evidence: E010]
   code silently ship to production when the env var is missing.
 - **Rule:** secrets come from the environment only. `.env` is gitignored;
   `.env.example` (committed) documents every variable with placeholders.
-  Required secrets have NO default — the app must refuse to start without them.
+  Required secrets have NO default — the app must refuse to start without them. [Evidence: E010]
 
 ## Blocking I/O inside async handlers
 
@@ -30,7 +30,7 @@ Each entry: symptom → why it happens → the rule. Red lines are non-negotiabl
   under concurrent load; unrelated endpoints stall together.
 - **Why:** a sync DB driver, sync HTTP client, or `time.sleep` inside
   `async def` blocks the single event loop; every in-flight request waits.
-- **Rule:** inside `async def`, every I/O call is awaitable. Blocking code goes
+- **Rule:** inside `async def`, every I/O call is awaitable. Blocking code goes [Evidence: E004]
   in a `def` endpoint (threadpool) or an explicit threadpool dispatch. Audit
   third-party SDK calls — most are sync unless stated otherwise.
 
@@ -39,32 +39,32 @@ Each entry: symptom → why it happens → the rule. Red lines are non-negotiabl
 - **Symptom:** "connection pool exhausted" under load; stale reads; one
   request's failure corrupting another's transaction.
 - **Why:** sessions created outside the request scope (module-level, cached, or
-  never closed on the exception path) are shared or leaked.
+  never closed on the exception path) are shared or leaked. [Evidence: E005, E006]
 - **Rule:** one session per request, provided by a yielding dependency that
   closes/rolls back in `finally`. No session object ever lives at module level
   or crosses a request boundary.
 
 ## Pydantic major-version idiom mixing
 
-- **Symptom:** validators never run, `class Config` is silently ignored,
+- **Symptom:** validators never run, `class Config` is silently ignored, [Evidence: E011]
   `.dict()`/`.model_dump()` attribute errors, config options with no effect.
 - **Why:** the two pydantic idiom generations (v1-style vs v2-style decorators,
   config, serialization methods) look similar, coexist in tutorials and LLM
   training data, and fail quietly rather than loudly when mixed.
 - **Rule:** before writing any model code, verify which pydantic major is
   installed (see `deps.yaml` lookup) and use ONLY that generation's idioms,
-  consistently, project-wide. Never copy a validator or Config snippet without
+  consistently, project-wide. Never copy a validator or Config snippet without [Evidence: E011]
   checking which generation it belongs to.
 
 ## Mutable defaults in dependencies and signatures
 
 - **Symptom:** state bleeds between requests — a list keeps growing, a dict
   carries a previous caller's values.
-- **Why:** Python evaluates default arguments once at definition time; a
-  mutable default (list/dict/set/model instance) is shared by every call.
+- **Why:** Python evaluates default arguments once at definition time; a [Evidence: E012]
+  mutable default (list/dict/set/model instance) is shared by every call. [Evidence: E012]
   Dependency functions and handler signatures are still plain functions.
-- **Rule:** never use a mutable object as a default in a handler, dependency,
-  or service signature. Default to `None` and construct inside, or use the
+- **Rule:** never use a mutable object as a default in a handler, dependency, [Evidence: E012]
+  or service signature. Default to `None` and construct inside, or use the [Evidence: E012]
   framework's declarative defaults which are re-evaluated per request.
 
 ## Missing migration discipline (schema drift)
@@ -73,7 +73,7 @@ Each entry: symptom → why it happens → the rule. Red lines are non-negotiabl
   dev machine; a deploy fails on a column that exists nowhere in git.
 - **Why:** schema changes applied by hand or by `create_all` bypass the
   migration chain, so environments diverge irreversibly.
-- **Rule:** every schema change is an Alembic migration committed with the
+- **Rule:** every schema change is an Alembic migration committed with the [Evidence: E006]
   model change. `create_all` is for throwaway tests only. Autogenerated
   migrations are reviewed before commit — autogenerate misses renames and
   constraint changes.
@@ -87,16 +87,16 @@ Each entry: symptom → why it happens → the rule. Red lines are non-negotiabl
   Workers share nothing — in-process caches, globals, and background state are
   per-worker.
 - **Rule:** fix event-loop blocking in code, not with workers. Size workers for
-  CPU cores and deployment model. Never assume in-process state is shared once
+  CPU cores and deployment model. Never assume in-process state is shared once [Evidence: E013]
   workers exceed one.
 
 ## Naive datetime handling
 
 - **Symptom:** timestamps shift by hours between environments; comparisons
   raise or, worse, silently produce wrong ordering; token expiry misbehaves.
-- **Why:** naive datetimes carry no timezone; local-time defaults differ per
+- **Why:** naive datetimes carry no timezone; local-time defaults differ per [Evidence: E014]
   machine, and naive/aware comparisons are a category error.
-- **Rule:** all datetimes are timezone-aware UTC at creation, in the DB, and
+- **Rule:** all datetimes are timezone-aware UTC at creation, in the DB, and [Evidence: E014]
   in APIs (serialize with explicit offset). Convert to local time only at
   display boundaries. Treat any naive datetime constructor in the codebase as
   a bug.
@@ -109,7 +109,7 @@ Each entry: symptom → why it happens → the rule. Red lines are non-negotiabl
 - **Why:** the ORM entity is the table, not the contract; returning it couples
   the wire format to the schema and drags session lifetime into serialization.
 - **Rule:** every handler declares an explicit response model; ORM objects are
-  mapped to schemas at the service/handler boundary and never escape it.
+  mapped to schemas at the service/handler boundary and never escape it. [Evidence: E007]
 
 ## 422 vs 400 semantics surprises
 
@@ -120,5 +120,5 @@ Each entry: symptom → why it happens → the rule. Red lines are non-negotiabl
   handlers produce a different shape.
 - **Rule:** decide the error contract up front: either document the framework's
   validation status/shape as the contract, or install a validation exception
-  handler that maps to your envelope. Do not let the two error shapes coexist
+  handler that maps to your envelope. Do not let the two error shapes coexist [Evidence: E015]
   unspecified.

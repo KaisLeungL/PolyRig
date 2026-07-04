@@ -5,6 +5,7 @@ version_policy: verify_latest_before_use
 dependencies:
   - coordinate: fastapi (PyPI)
     purpose: Web framework — routing, dependency injection, OpenAPI generation
+    evidence: [E101]
     lookup:
       query: "fastapi latest version release notes breaking changes"
       official_sources:
@@ -15,6 +16,7 @@ dependencies:
 
   - coordinate: uvicorn (PyPI)
     purpose: ASGI server for development and production
+    evidence: [E102]
     lookup:
       query: "uvicorn latest version standard extras deployment"
       official_sources:
@@ -25,6 +27,7 @@ dependencies:
 
   - coordinate: pydantic (PyPI)
     purpose: Data validation — request/response schemas
+    evidence: [E103]
     lookup:
       query: "pydantic latest major version migration guide"
       official_sources:
@@ -35,6 +38,7 @@ dependencies:
 
   - coordinate: pydantic-settings (PyPI)
     purpose: Settings management from environment variables and .env files
+    evidence: [E104]
     lookup:
       query: "pydantic-settings latest version BaseSettings env file"
       official_sources:
@@ -45,6 +49,7 @@ dependencies:
 
   - coordinate: sqlalchemy (PyPI)
     purpose: ORM and database toolkit, used in async mode
+    evidence: [E105]
     lookup:
       query: "sqlalchemy latest version async engine asyncio support"
       official_sources:
@@ -55,6 +60,7 @@ dependencies:
 
   - coordinate: alembic (PyPI)
     purpose: Database schema migrations for SQLAlchemy
+    evidence: [E106]
     lookup:
       query: "alembic latest version async env.py template sqlalchemy compatibility"
       official_sources:
@@ -65,6 +71,7 @@ dependencies:
 
   - coordinate: httpx (PyPI)
     purpose: Async HTTP client for outbound calls; also drives API tests
+    evidence: [E107]
     lookup:
       query: "httpx latest version release notes AsyncClient"
       official_sources:
@@ -75,6 +82,7 @@ dependencies:
 
   - coordinate: pytest (PyPI)
     purpose: Test runner
+    evidence: [E108]
     lookup:
       query: "pytest latest version release notes"
       official_sources:
@@ -85,6 +93,7 @@ dependencies:
 
   - coordinate: pytest-asyncio (PyPI)
     purpose: Run async test functions under pytest
+    evidence: [E109]
     lookup:
       query: "pytest-asyncio latest version asyncio_mode configuration"
       official_sources:
@@ -95,6 +104,7 @@ dependencies:
 
   - coordinate: python (interpreter)
     purpose: Python interpreter version policy for the project
+    evidence: [E110]
     lookup:
       query: "python supported versions release schedule end of life"
       official_sources:

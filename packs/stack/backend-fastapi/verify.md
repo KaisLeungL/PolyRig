@@ -1,7 +1,7 @@
 # FastAPI backend — verification routes
 
-Standing rule: **a feature is not done until the relevant routes below pass.**
-Never mark a feature `verified` in `feature_list.json` on the strength of
+Standing rule: **a feature is not done until the relevant routes below pass.** [Evidence: E018]
+Never mark a feature `verified` in `feature_list.json` on the strength of [Evidence: E018]
 "the code looks right". Command names below assume the uv workflow; substitute
 the project's chosen tool invocations 1:1 if it differs.
 
@@ -15,7 +15,7 @@ the project's chosen tool invocations 1:1 if it differs.
 
 ## 2. Lint and format
 
-- `uv run ruff check .` — zero errors. Do not silence rules inline to pass;
+- `uv run ruff check .` — zero errors. Do not silence rules inline to pass; [Evidence: E016]
   rule changes go in `pyproject.toml` with a reason.
 - `uv run ruff format --check .` — zero diffs.
 
@@ -23,7 +23,7 @@ the project's chosen tool invocations 1:1 if it differs.
 
 Decision: mypy or pyright — pick ONE at project start and wire it into
 `pyproject.toml`; the two disagree on edge cases and running both produces
-noise. **Default: mypy** (`uv run mypy app`), pyright if the team is
+noise. **Default: mypy** (`uv run mypy app`), pyright if the team is [Evidence: E017]
 editor-first. Route: the chosen checker passes over `app/` with no errors on
 new/changed files.
 
@@ -68,4 +68,4 @@ Run after the automated routes pass, against a locally running server:
 - [ ] Error responses for a deliberately malformed request match the project's
       documented error envelope (status code and body shape).
 - [ ] No secrets or stack traces appear in any response body or in logs at the
-      default log level.
+      default log level. [Evidence: E010]
