@@ -20,11 +20,20 @@ if a pack does not cover something, say so and record it as a constraint or note
 
 ## Step 0 — Resolve POLYRIG_ROOT (once, before P2)
 
-This skill is normally a symlink `~/.claude/skills/polyrig -> <repo>/skill/claude-code/polyrig`.
-Resolve the repo root once and reuse it for every script call:
+This skill is normally installed as a symlink from an agent-specific location
+to `<repo>/skill/polyrig`. Resolve the repo root once and reuse it for every
+script call. Prefer `POLYRIG_ROOT` if the user or launcher has set it; otherwise
+try the common native skill install locations:
 
 ```bash
-POLYRIG_ROOT="$(cd "$(readlink -f ~/.claude/skills/polyrig)/../../.." && pwd)"
+if [ -z "${POLYRIG_ROOT:-}" ]; then
+  for candidate in "$HOME/.codex/skills/polyrig" "$HOME/.claude/skills/polyrig"; do
+    if [ -e "$candidate" ]; then
+      POLYRIG_ROOT="$(cd "$(readlink -f "$candidate")/../.." && pwd)"
+      break
+    fi
+  done
+fi
 ```
 
 Then verify `$POLYRIG_ROOT/scripts/build-pack-index.mjs` exists. If it does not
@@ -122,7 +131,8 @@ Execute the assembly procedure below, then report.
 
 The index scans three roots; on id collision the most specific wins
 (**project > user > builtin**): builtin `$POLYRIG_ROOT/packs/`, user
-`~/.claude/polyrig-packs/`, project `<target>/.polyrig/packs/`.
+`~/.polyrig/packs/` (plus legacy `~/.claude/polyrig-packs/`), project
+`<target>/.polyrig/packs/`.
 
 **Override announcement (MANDATORY).** When the index's `overrides` array is
 non-empty, announce each entry to the user before selection, in this format:
@@ -162,7 +172,7 @@ record `confidence: unverified` and say so in the final report.
 - Do **NOT** copy or run pack `scripts/` unless the trust table above permits it
   and (for user packs) the user explicitly confirmed.
 
-**c. Instantiate templates** from `$POLYRIG_ROOT/skill/claude-code/polyrig/templates/`,
+**c. Instantiate templates** from `$POLYRIG_ROOT/skill/polyrig/templates/`,
 filling every placeholder from interview answers and removing all `polyrig:` comments:
 - `SPEC.md` — P1–P4 decisions **with rationale in the user's own terms**.
 - `AGENTS.md` — routing rows for **every** copied doc directory + the hard rules

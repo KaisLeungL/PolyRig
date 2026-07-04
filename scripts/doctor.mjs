@@ -5,10 +5,11 @@
 //
 // Checks:
 //   1. Node.js version >= 18.
-//   2. Repository layout sanity: the three protocol schemas and the skill
-//      directory are present.
-//   3. Skill link status in ~/.claude/skills/polyrig (missing or wrong is a
-//      WARNING, not a failure — installation is optional on CI machines).
+//   2. Repository layout sanity: the three protocol schemas and the canonical
+//      skill directory are present.
+//   3. Native skill link status in ~/.claude/skills/polyrig and
+//      ~/.codex/skills/polyrig (missing or wrong is a WARNING, not a failure —
+//      installation is optional on CI machines).
 //   4. Every pack under <repo>/packs/<type>/<name> passes validate-pack.
 //      Directories without a pack.yaml (e.g. a .gitkeep placeholder) are
 //      reported as "skipped (placeholder)" and do not fail.
@@ -43,37 +44,41 @@ for (const schema of ['pack.schema.json', 'feature_list.schema.json', 'manifest.
   if (existsSync(p)) ok(`schemas/${schema}`);
   else fail(`schemas/${schema} is missing`);
 }
-const skillDir = join(REPO_ROOT, 'skill', 'claude-code', 'polyrig');
+const skillDir = join(REPO_ROOT, 'skill', 'polyrig');
 if (existsSync(skillDir) && statSync(skillDir).isDirectory()) {
-  ok('skill/claude-code/polyrig/ exists');
+  ok('skill/polyrig/ exists');
   if (!existsSync(join(skillDir, 'SKILL.md'))) {
-    warn('skill/claude-code/polyrig/SKILL.md not written yet (feature F009)');
+    warn('skill/polyrig/SKILL.md not written yet (feature F009)');
   }
 } else {
-  fail('skill/claude-code/polyrig/ is missing');
+  fail('skill/polyrig/ is missing');
 }
 
 // --- 3. Skill link status ---------------------------------------------------
 console.log('skill installation');
-const linkDest = join(homedir(), '.claude', 'skills', 'polyrig');
-let linkStat = null;
-try { linkStat = lstatSync(linkDest); } catch { /* absent */ }
-if (linkStat === null) {
-  warn(`skill not installed at ${linkDest} — run: node scripts/link-skill.mjs`);
-} else if (linkStat.isSymbolicLink()) {
-  let target = null;
-  try { target = realpathSync(linkDest); } catch { /* dangling */ }
-  if (target === realpathSync(skillDir)) {
-    ok(`skill linked: ${linkDest} -> ${target}`);
-  } else if (target === null) {
-    warn(`skill link at ${linkDest} is dangling — re-run: node scripts/link-skill.mjs --force`);
+for (const linkDest of [
+  join(homedir(), '.claude', 'skills', 'polyrig'),
+  join(homedir(), '.codex', 'skills', 'polyrig'),
+]) {
+  let linkStat = null;
+  try { linkStat = lstatSync(linkDest); } catch { /* absent */ }
+  if (linkStat === null) {
+    warn(`skill not installed at ${linkDest} — run: node scripts/link-skill.mjs --platform all`);
+  } else if (linkStat.isSymbolicLink()) {
+    let target = null;
+    try { target = realpathSync(linkDest); } catch { /* dangling */ }
+    if (target === realpathSync(skillDir)) {
+      ok(`skill linked: ${linkDest} -> ${target}`);
+    } else if (target === null) {
+      warn(`skill link at ${linkDest} is dangling — re-run: node scripts/link-skill.mjs --platform all --force`);
+    } else {
+      warn(`skill link at ${linkDest} points elsewhere (${target})`);
+    }
+  } else if (linkStat.isDirectory()) {
+    ok(`skill installed as a copied directory at ${linkDest} (re-copy after skill changes)`);
   } else {
-    warn(`skill link at ${linkDest} points elsewhere (${target})`);
+    warn(`unexpected non-directory at ${linkDest}`);
   }
-} else if (linkStat.isDirectory()) {
-  ok(`skill installed as a copied directory at ${linkDest} (re-copy after skill changes)`);
-} else {
-  warn(`unexpected non-directory at ${linkDest}`);
 }
 
 // --- 4. Validate all builtin packs ------------------------------------------

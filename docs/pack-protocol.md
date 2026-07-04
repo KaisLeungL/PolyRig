@@ -154,11 +154,11 @@ re-verify.
 
 ## Discovery roots and override precedence
 
-Packs are discovered from three roots. On id collision the **most specific
-wins**: `project > user > builtin`.
+Packs are discovered from three logical roots. On id collision the **most
+specific wins**: `project > user > builtin`.
 
 1. **builtin** — `packs/` in the PolyRig repository
-2. **user** — `~/.claude/polyrig-packs/`
+2. **user** — `~/.polyrig/packs/` (legacy `~/.claude/polyrig-packs/` is still scanned)
 3. **project** — `.polyrig/packs/` in the target project
 
 When an override is detected, assembly MUST announce it explicitly: the source
