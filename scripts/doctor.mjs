@@ -5,11 +5,11 @@
 //
 // Checks:
 //   1. Node.js version >= 18.
-//   2. Repository layout sanity: the three protocol schemas and the canonical
-//      skill directory are present.
-//   3. Native skill link status in ~/.claude/skills/polyrig and
-//      ~/.codex/skills/polyrig (missing or wrong is a WARNING, not a failure —
-//      installation is optional on CI machines).
+//   2. Repository layout sanity: the three protocol schemas and canonical
+//      skill directories are present.
+//   3. Native skill link status in ~/.claude/skills/* and ~/.codex/skills/*
+//      (missing or wrong is a WARNING, not a failure — installation is optional
+//      on CI machines).
 //   4. Every pack under <repo>/packs/<type>/<name> passes validate-pack.
 //      Directories without a pack.yaml (e.g. a .gitkeep placeholder) are
 //      reported as "skipped (placeholder)" and do not fail.
@@ -23,6 +23,10 @@ import { REPO_ROOT, listPackDirs, validatePackDir } from './lib/validate.mjs';
 
 let failures = 0;
 let warnings = 0;
+const SKILLS = [
+  { name: 'polyrig', path: join(REPO_ROOT, 'skill', 'polyrig') },
+  { name: 'polyrig-pack-author', path: join(REPO_ROOT, 'skill', 'polyrig-pack-author') },
+];
 
 function ok(msg) { console.log(`  ok    ${msg}`); }
 function warn(msg) { warnings += 1; console.log(`  WARN  ${msg}`); }
@@ -44,40 +48,46 @@ for (const schema of ['pack.schema.json', 'feature_list.schema.json', 'manifest.
   if (existsSync(p)) ok(`schemas/${schema}`);
   else fail(`schemas/${schema} is missing`);
 }
-const skillDir = join(REPO_ROOT, 'skill', 'polyrig');
-if (existsSync(skillDir) && statSync(skillDir).isDirectory()) {
-  ok('skill/polyrig/ exists');
-  if (!existsSync(join(skillDir, 'SKILL.md'))) {
-    warn('skill/polyrig/SKILL.md not written yet (feature F009)');
+for (const skill of SKILLS) {
+  if (existsSync(skill.path) && statSync(skill.path).isDirectory()) {
+    ok(`skill/${skill.name}/ exists`);
+    if (!existsSync(join(skill.path, 'SKILL.md'))) {
+      warn(`skill/${skill.name}/SKILL.md not written yet`);
+    }
+  } else {
+    fail(`skill/${skill.name}/ is missing`);
   }
-} else {
-  fail('skill/polyrig/ is missing');
 }
 
 // --- 3. Skill link status ---------------------------------------------------
 console.log('skill installation');
-for (const linkDest of [
-  join(homedir(), '.claude', 'skills', 'polyrig'),
-  join(homedir(), '.codex', 'skills', 'polyrig'),
+for (const platform of [
+  { name: 'claude-code', root: join(homedir(), '.claude', 'skills') },
+  { name: 'codex', root: join(homedir(), '.codex', 'skills') },
 ]) {
-  let linkStat = null;
-  try { linkStat = lstatSync(linkDest); } catch { /* absent */ }
-  if (linkStat === null) {
-    warn(`skill not installed at ${linkDest} — run: node scripts/link-skill.mjs --platform all`);
-  } else if (linkStat.isSymbolicLink()) {
-    let target = null;
-    try { target = realpathSync(linkDest); } catch { /* dangling */ }
-    if (target === realpathSync(skillDir)) {
-      ok(`skill linked: ${linkDest} -> ${target}`);
-    } else if (target === null) {
-      warn(`skill link at ${linkDest} is dangling — re-run: node scripts/link-skill.mjs --platform all --force`);
+  for (const skill of SKILLS) {
+    const linkDest = join(platform.root, skill.name);
+    let canonicalTarget = null;
+    try { canonicalTarget = realpathSync(skill.path); } catch { /* repository layout check reports this above */ }
+    let linkStat = null;
+    try { linkStat = lstatSync(linkDest); } catch { /* absent */ }
+    if (linkStat === null) {
+      warn(`${skill.name} not installed for ${platform.name} at ${linkDest} — run: node scripts/link-skill.mjs --platform all`);
+    } else if (linkStat.isSymbolicLink()) {
+      let target = null;
+      try { target = realpathSync(linkDest); } catch { /* dangling */ }
+      if (target !== null && canonicalTarget !== null && target === canonicalTarget) {
+        ok(`${skill.name} linked for ${platform.name}: ${linkDest} -> ${target}`);
+      } else if (target === null) {
+        warn(`${skill.name} link for ${platform.name} at ${linkDest} is dangling — re-run: node scripts/link-skill.mjs --platform all --force`);
+      } else {
+        warn(`${skill.name} link for ${platform.name} at ${linkDest} points elsewhere (${target})`);
+      }
+    } else if (linkStat.isDirectory()) {
+      ok(`${skill.name} installed for ${platform.name} as a copied directory at ${linkDest} (re-copy after skill changes)`);
     } else {
-      warn(`skill link at ${linkDest} points elsewhere (${target})`);
+      warn(`unexpected non-directory for ${skill.name} at ${linkDest}`);
     }
-  } else if (linkStat.isDirectory()) {
-    ok(`skill installed as a copied directory at ${linkDest} (re-copy after skill changes)`);
-  } else {
-    warn(`unexpected non-directory at ${linkDest}`);
   }
 }
 

@@ -27,6 +27,11 @@ function assertSymlink(dest, expectedTarget) {
   assert(realpathSync(dest) === realpathSync(expectedTarget), `${dest} should point to ${expectedTarget}`);
 }
 
+function assertIncludes(file, expected, label) {
+  const content = readFileSync(file, 'utf8');
+  assert(content.includes(expected), `${label} should mention ${expected}`);
+}
+
 const home = mkdtempSync(join(tmpdir(), 'polyrig-link-skill-'));
 try {
   const legacyDest = join(home, '.claude', 'skills', 'polyrig');
@@ -38,21 +43,31 @@ try {
     stdio: 'pipe',
   });
 
-  const skillSrc = join(REPO_ROOT, 'skill', 'polyrig');
-  assertSymlink(join(home, '.claude', 'skills', 'polyrig'), skillSrc);
-  assertSymlink(join(home, '.codex', 'skills', 'polyrig'), skillSrc);
+  const skills = [
+    { name: 'polyrig', path: join(REPO_ROOT, 'skill', 'polyrig') },
+    { name: 'polyrig-pack-author', path: join(REPO_ROOT, 'skill', 'polyrig-pack-author') },
+  ];
+  for (const skill of skills) {
+    assertSymlink(join(home, '.claude', 'skills', skill.name), skill.path);
+    assertSymlink(join(home, '.codex', 'skills', skill.name), skill.path);
+  }
 
   const cursorRule = join(home, '.cursor', 'rules', 'polyrig.mdc');
   assert(existsSync(cursorRule), 'Cursor rule should be installed');
-  assert(readFileSync(cursorRule, 'utf8').includes('skill/polyrig/SKILL.md'), 'Cursor rule should point at canonical skill');
+  assertIncludes(cursorRule, 'skill/polyrig/SKILL.md', 'Cursor rule');
+  assertIncludes(cursorRule, 'skill/polyrig-pack-author/SKILL.md', 'Cursor rule');
 
   const geminiContext = join(home, '.gemini', 'GEMINI.md');
   assert(existsSync(geminiContext), 'Gemini context should be installed');
-  assert(readFileSync(geminiContext, 'utf8').includes('BEGIN POLYRIG MANAGED BLOCK'), 'Gemini context should include managed block');
+  assertIncludes(geminiContext, 'BEGIN POLYRIG MANAGED BLOCK', 'Gemini context');
+  assertIncludes(geminiContext, 'skill/polyrig/SKILL.md', 'Gemini context');
+  assertIncludes(geminiContext, 'skill/polyrig-pack-author/SKILL.md', 'Gemini context');
 
   const opencodeContext = join(home, '.config', 'opencode', 'AGENTS.md');
   assert(existsSync(opencodeContext), 'OpenCode context should be installed');
-  assert(readFileSync(opencodeContext, 'utf8').includes('BEGIN POLYRIG MANAGED BLOCK'), 'OpenCode context should include managed block');
+  assertIncludes(opencodeContext, 'BEGIN POLYRIG MANAGED BLOCK', 'OpenCode context');
+  assertIncludes(opencodeContext, 'skill/polyrig/SKILL.md', 'OpenCode context');
+  assertIncludes(opencodeContext, 'skill/polyrig-pack-author/SKILL.md', 'OpenCode context');
 
   execFileSync(process.execPath, ['scripts/link-skill.mjs', '--platform', 'all', '--home', home], {
     cwd: REPO_ROOT,

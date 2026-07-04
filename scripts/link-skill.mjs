@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// link-skill.mjs — install the /polyrig skill for supported agent platforms.
-// Native skill platforms get a symlink (or copy) to skill/polyrig. Platforms
+// link-skill.mjs — install PolyRig skills for supported agent platforms.
+// Native skill platforms get symlinks (or copies) to canonical skill dirs. Platforms
 // without a native skill folder get a small managed pointer/context file.
 //
 // Usage:
@@ -25,6 +25,10 @@ import { REPO_ROOT } from './lib/validate.mjs';
 const PLATFORM_NAMES = ['claude-code', 'codex', 'cursor', 'gemini-cli', 'opencode'];
 const MANAGED_BEGIN = '<!-- BEGIN POLYRIG MANAGED BLOCK -->';
 const MANAGED_END = '<!-- END POLYRIG MANAGED BLOCK -->';
+const SKILLS = [
+  { name: 'polyrig', path: join(REPO_ROOT, 'skill', 'polyrig') },
+  { name: 'polyrig-pack-author', path: join(REPO_ROOT, 'skill', 'polyrig-pack-author') },
+];
 
 function usage(msg) {
   if (msg) console.error(`error: ${msg}`);
@@ -64,24 +68,24 @@ if (unknownPlatforms.length > 0) usage(`unknown platform(s): ${unknownPlatforms.
 
 const platforms = [...new Set(requestedPlatforms)];
 const homeDir = resolve(home);
-const src = join(REPO_ROOT, 'skill', 'polyrig');
-const skillMd = join(src, 'SKILL.md');
 const legacyClaudeSrc = join(REPO_ROOT, 'skill', 'claude-code', 'polyrig');
 
-if (!existsSync(src)) {
-  console.error(`link-skill: skill source directory is missing: ${src}`);
-  process.exit(1);
+for (const skill of SKILLS) {
+  if (!existsSync(skill.path)) {
+    console.error(`link-skill: skill source directory is missing: ${skill.path}`);
+    process.exit(1);
+  }
 }
 
-function destStatus(dest) {
+function destStatus(dest, skill) {
   let st;
   try { st = lstatSync(dest); } catch { return 'absent'; }
   if (st.isSymbolicLink()) {
     try {
-      if (realpathSync(dest) === realpathSync(src)) return 'correct-symlink';
+      if (realpathSync(dest) === realpathSync(skill.path)) return 'correct-symlink';
     } catch { /* dangling symlink */ }
     try {
-      if (resolve(dirname(dest), readlinkSync(dest)) === legacyClaudeSrc) return 'legacy-symlink';
+      if (skill.name === 'polyrig' && resolve(dirname(dest), readlinkSync(dest)) === legacyClaudeSrc) return 'legacy-symlink';
     } catch { /* unreadable symlink */ }
     return 'other-symlink';
   }
@@ -96,8 +100,8 @@ function removeDest(dest, status) {
   }
 }
 
-function installNativeSkill(platform, dest) {
-  const status = destStatus(dest);
+function installNativeSkill(platform, skill, dest) {
+  const status = destStatus(dest, skill);
 
   if (status === 'correct-symlink' && !copy) {
     console.log(`${platform}: already installed: ${dest} -> ${realpathSync(dest)} (nothing to do)`);
@@ -128,11 +132,11 @@ function installNativeSkill(platform, dest) {
   mkdirSync(dirname(dest), { recursive: true });
 
   if (copy) {
-    cpSync(src, dest, { recursive: true });
-    console.log(`${platform}: copied skill: ${src} -> ${dest}`);
+    cpSync(skill.path, dest, { recursive: true });
+    console.log(`${platform}: copied skill: ${skill.path} -> ${dest}`);
   } else {
-    symlinkSync(src, dest, 'dir');
-    console.log(`${platform}: linked skill: ${dest} -> ${src}`);
+    symlinkSync(skill.path, dest, 'dir');
+    console.log(`${platform}: linked skill: ${dest} -> ${skill.path}`);
   }
 }
 
@@ -183,9 +187,13 @@ function pointerText(platform) {
     `## PolyRig (${platform})`,
     '',
     'When the user types `/polyrig`, mentions PolyRig, wants to cold-start an agent-ready project, or asks to assemble project context for AI coding agents:',
-    `1. Read and follow the PolyRig skill at \`${skillMd}\`.`,
+    `1. Read and follow the PolyRig skill at \`${join(SKILLS[0].path, 'SKILL.md')}\`.`,
     `2. Treat \`${REPO_ROOT}\` as POLYRIG_ROOT for all PolyRig script calls.`,
     '3. Do not improvise stack or domain knowledge; use the packs discovered by PolyRig.',
+    '',
+    'When the user wants to create, update, review, or validate a PolyRig pack:',
+    `1. Read and follow the PolyRig pack authoring skill at \`${join(SKILLS[1].path, 'SKILL.md')}\`.`,
+    '2. Keep pack authoring separate from `/polyrig` project initialization.',
     '',
   ].join('\n');
 }
@@ -203,9 +211,9 @@ function cursorRule() {
 
 for (const platform of platforms) {
   if (platform === 'claude-code') {
-    installNativeSkill(platform, join(homeDir, '.claude', 'skills', 'polyrig'));
+    for (const skill of SKILLS) installNativeSkill(platform, skill, join(homeDir, '.claude', 'skills', skill.name));
   } else if (platform === 'codex') {
-    installNativeSkill(platform, join(homeDir, '.codex', 'skills', 'polyrig'));
+    for (const skill of SKILLS) installNativeSkill(platform, skill, join(homeDir, '.codex', 'skills', skill.name));
   } else if (platform === 'cursor') {
     writeDedicatedFile(platform, join(homeDir, '.cursor', 'rules', 'polyrig.mdc'), cursorRule());
   } else if (platform === 'gemini-cli') {
@@ -215,4 +223,4 @@ for (const platform of platforms) {
   }
 }
 
-console.log(`done. The /polyrig skill is installed for: ${platforms.join(', ')}.`);
+console.log(`done. PolyRig skills are installed for: ${platforms.join(', ')}.`);
