@@ -54,7 +54,7 @@
       "acceptance_criteria": [
         "scripts/validate-pack.mjs validates a pack directory against pack.schema.json plus structural rules (knowledge/overview.md and verify.md present; per-stack/ files match pack.yaml stacks; domain packs' requires resolvable)",
         "scripts/build-pack-index.mjs scans the discovery roots (builtin, ~/.polyrig/packs, legacy ~/.claude/polyrig-packs, <target>/.polyrig/packs), applies project>user>builtin override precedence, and emits an index JSON including trust source and script presence per pack",
-        "scripts/link-skill.mjs installs skill/polyrig into supported agent platforms (Claude Code, Codex, Cursor, Gemini CLI, OpenCode), idempotently",
+        "scripts/link-skill.mjs installs PolyRig skills into supported agent platforms (Claude Code, Codex, Cursor, Gemini CLI, OpenCode), idempotently",
         "scripts/doctor.mjs checks node version, skill link status, and runs validate-pack over all builtin packs",
         "All scripts run on bare node (no package.json dependencies) and exit non-zero on failure"
       ],
@@ -226,14 +226,60 @@
       "acceptance_criteria": [
         "docs/authoring-packs.md walks through creating a user-level pack (e.g. a voice-IME domain pack) by hand against the protocol",
         "Documents the three discovery roots, override precedence, and trust implications for pack authors",
-        "Uses auth-google as the worked reference example"
+        "Uses auth-google as the worked reference example",
+        "Documents Evidence Matrix, [Evidence: E001] markers, and deps.yaml evidence requirements"
       ],
       "verification": {
         "manual": ["A reader can produce a validate-pack-passing pack following only this doc"],
         "automated": ["node scripts/validate-pack.mjs <pack created during doc review>"]
       },
       "files_expected": ["docs/authoring-packs.md"],
-      "notes": "The AI pack-authoring wizard itself is deferred past v0.1; this doc is the manual path. Verified: author followed the guide to hand-build a voice-ime pack in a temp user root; validate-pack passed on first run (evidence in orchestration log)."
+      "notes": "Manual authoring guide updated for Evidence Matrix. Verified historically with a hand-built voice-ime pack; new Evidence Matrix protocol is tracked by F012."
+    },
+    {
+      "id": "F012",
+      "title": "Pack authoring skill and Evidence Matrix protocol",
+      "status": "implemented",
+      "priority": "p0",
+      "depends_on": ["F002", "F003", "F004", "F005", "F006", "F007", "F009", "F011"],
+      "pack_refs": ["stack/android", "stack/backend-fastapi", "domain/auth-core", "domain/auth-google"],
+      "acceptance_criteria": [
+        "Evidence Matrix is a formal pack validation requirement: references/sources.md exists, ids are unique E### values, legal statuses/volatility are enforced, Markdown [Evidence: E001] references resolve, strong rules require source-backed or user-provided evidence, and deps.yaml entries require evidence arrays",
+        "All four builtin packs are minimally migrated with references/sources.md, evidence markers, and deps.yaml evidence where applicable",
+        "The /polyrig skill copies pack sources.md into generated docs/stacks|domains and includes copied sources in checksum guidance",
+        "A new skill/polyrig-pack-author exists with six-phase guided authoring, create/update behavior, web-search/source discipline, draft/ready gate, fixed dual subagent review prompts, and pack templates",
+        "scripts/link-skill.mjs and doctor support installing/checking both polyrig and polyrig-pack-author",
+        "README, SPEC, pack protocol, architecture, and authoring guide document Evidence Matrix and pack-authoring behavior"
+      ],
+      "verification": {
+        "manual": [
+          "Protocol / structure subagent review reports no blocking issues",
+          "Content / safety subagent review reports no blocking issues"
+        ],
+        "automated": [
+          "node scripts/test-validate-pack-evidence.mjs",
+          "node scripts/test-link-skill.mjs",
+          "node scripts/test-build-pack-index.mjs",
+          "node scripts/doctor.mjs",
+          "node -e \"JSON.parse(require('fs').readFileSync('feature_list.json','utf8'))\"",
+          "git diff --check"
+        ]
+      },
+      "files_expected": [
+        "scripts/test-validate-pack-evidence.mjs",
+        "scripts/lib/validate.mjs",
+        "skill/polyrig-pack-author/SKILL.md",
+        "skill/polyrig-pack-author/references/pack-authoring-contract.md",
+        "skill/polyrig-pack-author/references/review-prompts.md",
+        "skill/polyrig-pack-author/assets/pack-template/references/sources.md",
+        "packs/stack/android/references/sources.md",
+        "packs/stack/backend-fastapi/references/sources.md",
+        "packs/domain/auth-core/references/sources.md",
+        "packs/domain/auth-google/references/sources.md",
+        "docs/plans/2026-07-04-polyrig-pack-author-spec.md",
+        "docs/plans/2026-07-04-polyrig-pack-author-implementation.md"
+      ],
+      "notes": "Implementation used subagents for validator, skill, /polyrig copy contract, installation, and each builtin pack migration. Final dual review is required before marking verified."
     }
   ]
 }

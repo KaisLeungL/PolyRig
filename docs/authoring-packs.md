@@ -43,6 +43,8 @@ domain/voice-ime/
     overview.md
     pitfalls.md
     per-stack/android.md  # one per declared stack
+  references/
+    sources.md            # REQUIRED Evidence Matrix
   deps.yaml               # optional
   verify.md               # REQUIRED, non-empty
 ```
@@ -104,7 +106,29 @@ decisions and reasons, not tutorials: the AI knows how to call a speech API;
 it does not know which mode your product requires or which trap bit you.
 
 `pitfalls.md` is a strong convention, not validator-enforced (only a non-empty
-`knowledge/` is required). Keep it anyway; consumers look for it.
+`knowledge/` is required). Keep it anyway; consumers look for it. Any strong
+rule, red line, or recommended default in `overview.md`, `pitfalls.md`, or
+`verify.md` must cite evidence with an inline marker such as `[Evidence: E001]`.
+
+### 2.3.1 references/sources.md — Evidence Matrix
+
+Every pack must carry `references/sources.md` with a Markdown Evidence Matrix:
+
+```md
+# Sources
+
+## Evidence Matrix
+
+| id | claim | status | source_type | urls | applies_to | volatility | notes |
+|---|---|---|---|---|---|---|---|
+| E001 | Speech capture must be visible to the user and raw transcripts must not be logged. | source-backed | official,security | https://developer.android.com/develop/sensors-and-location/sensors/permissions, https://mas.owasp.org/ | knowledge/pitfalls.md#privacy | low | Strong privacy red line. |
+```
+
+Allowed `status` values: `source-backed`, `user-provided`, `inferred`,
+`unverified`. Allowed `volatility` values: `low`, `medium`, `high`.
+Strong rules cannot rely on `unverified` evidence, and cannot rely only on
+`inferred` evidence. Use `local:interview` or `local:<path>` for user-provided
+material.
 
 ### 2.4 per-stack/ files and the stacks field
 
@@ -133,13 +157,15 @@ dependencies:
       query: "android on-device speech recognition recommended API latest"
       official_sources:
         - https://developer.android.com/reference/android/speech/SpeechRecognizer
+    evidence: [E002]
     notes: Confirm which recognition surface is currently recommended before use.
 ```
 
 Each entry must carry a `lookup` block (a `query` string and/or non-empty
 `official_sources`) or a `source` string — the validator rejects entries with
-neither. Never write "use version X.Y" in prose or here: write *how to find
-the current answer* and what to double-check.
+neither. Each entry must also carry an `evidence` array whose ids exist in
+`references/sources.md`. Never write "use version X.Y" in prose or here: write
+*how to find the current answer* and what to double-check.
 
 ### 2.6 verify.md — the domain's definition of done
 
@@ -221,8 +247,12 @@ Violation classes:
 - **verify.md** — missing or empty; **knowledge/** — missing or without any
   `.md` file; **knowledge/per-stack/** — a declared stack lacks its
   `per-stack/<stack>.md`.
+- **references/sources.md** — missing, missing `## Evidence Matrix`, malformed
+  table, duplicate/bad evidence ids, illegal status/volatility values, missing
+  evidence references, or strong rules backed only by `inferred`/`unverified`
+  evidence.
 - **deps.yaml** — parse error, or a dependency entry with neither a lookup
-  strategy nor a source.
+  strategy nor a source, or missing/unknown `evidence` ids.
 - **requires** — a required id resolves in no discovery root.
 
 Exit 0 prints `PASS <id>`; exit 1 lists every specific violation. **A pack
@@ -240,8 +270,10 @@ yourself for user and project packs.
   `aud`-is-the-web-client-ID trap) is the model of slow-changing, hard-won
   knowledge that passes the 18-month test.
 - **`deps.yaml`** — every entry is coordinate + purpose + lookup + official
-  Google sources + what to double-check; the header comment states the
-  no-pinned-versions rule outright.
+  Google sources + evidence ids + what to double-check; the header comment
+  states the no-pinned-versions rule outright.
+- **`references/sources.md`** — the Evidence Matrix linking claims and lookup
+  sources to stable ids used by knowledge, verification, and dependency entries.
 - **`knowledge/per-stack/android.md`, `backend-fastapi.md`** — one file per
   declared stack; each opens by assuming its stack pack's conventions rather
   than restating them.

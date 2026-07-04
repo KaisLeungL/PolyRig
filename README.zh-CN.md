@@ -41,11 +41,12 @@ v0.1 的验收就是一条端到端叙事：
 
 | 层 | 绑定 | 内容 |
 |---|---|---|
-| 1. 执行层（运行时） | agent 平台适配层 | `skill/polyrig/` —— SKILL.md（只含流程、路由、决策树、产物格式；不含知识性文字）+ 模板 |
+| 1. 执行层（运行时） | agent 平台适配层 | `skill/polyrig/` —— 初始化项目；`skill/polyrig-pack-author/` —— 创建和维护 pack |
 | 2. 协议与资产层 | agent 中立 | `packs/{stack,domain}/` + `schemas/`（pack、feature_list、manifest 的 JSON Schema） |
 | 3. 生成产物层 | agent 中立，落在目标项目里 | SPEC.md、AGENTS.md、CLAUDE.md、feature_list.json、docs/stacks/、docs/domains/、docs/verify.md、deps.resolved.md、.polyrig/manifest.json、init.plan.md、init.sh |
 
-v1 的执行入口是 PolyRig skill（`/polyrig`），可安装到 Claude Code、Codex、Cursor、
+v1 的执行入口是一组 PolyRig skills：`/polyrig` 初始化目标项目，
+`polyrig-pack-author` 创建和维护 packs。两者都可安装到 Claude Code、Codex、Cursor、
 Gemini CLI 和 OpenCode。长期价值绑定在 **包协议 + 生成的仓库上下文** 上，而不是某一个
 agent 运行时。
 
@@ -64,6 +65,8 @@ agent 运行时。
 - 包的文字部分只放**慢变知识**（决策树、坑点、安全红线）。易变事实（版本号、API
   细节）放在 `deps.yaml` 里，以坐标 + 查询策略的形式存在，装配时在线核实，写入目标
   项目带日期的 `deps.resolved.md`。
+- 每个 pack 都携带 `references/sources.md` Evidence Matrix。强规则、红线、推荐默认值
+  和依赖 lookup 都必须引用稳定的 `[Evidence: E001]` id，方便后续 agent 审计来源。
 - 发现根 —— 内置 `packs/`、用户级 `~/.polyrig/packs/`（兼容旧的
   `~/.claude/polyrig-packs/`）、项目级 `.polyrig/packs/` —— 遵循"越具体越优先"的
   覆盖规则，并配有显式信任模型（项目级包的脚本默认永不执行）。
@@ -78,9 +81,10 @@ node scripts/link-skill.mjs
 ```
 
 纯 git 仓库、零依赖 Node 脚本、没有 workspace 工具链、没有构建步骤。默认会把
-`skill/polyrig/` 安装到所有已支持的本机 agent 平台：Claude Code 和 Codex 使用原生
-skill 链接；Cursor、Gemini CLI 和 OpenCode 写入受管理的 pointer/context 文件。只安装
-单个平台可用 `--platform claude-code|codex|cursor|gemini-cli|opencode`。
+`skill/polyrig/` 和 `skill/polyrig-pack-author/` 安装到所有已支持的本机 agent 平台：
+Claude Code 和 Codex 使用原生 skill 链接；Cursor、Gemini CLI 和 OpenCode 写入受管理的
+pointer/context 文件。只安装单个平台可用
+`--platform claude-code|codex|cursor|gemini-cli|opencode`。
 
 ## v0.1 范围 —— 黄金路径
 
@@ -103,7 +107,7 @@ skill 链接；Cursor、Gemini CLI 和 OpenCode 写入受管理的 pointer/conte
 | v0.2 | `stack/web-nextjs`、auth-google 的 web 笔记 |
 | v0.3 | `stack/ios`、`domain/auth-apple` |
 | v0.4 | `domain/auth-wechat`（中国生态特有事项） |
-| 之后 | 包创作向导、`polyrig-update` 升级命令、远程包 |
+| 之后 | `polyrig-update` 升级命令、远程包 |
 
 ## 非目标
 

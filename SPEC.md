@@ -13,7 +13,8 @@ that AI coding needs: structured requirements, technical decisions with rational
 context routing, dependency lookup strategy, validation routes, and a persistent
 feature state machine — all versionable, reviewable, and **agent-neutral**.
 
-- **v1 execution entry**: the PolyRig skill (`/polyrig`), installable into
+- **v1 execution entries**: `polyrig` for project initialization and
+  `polyrig-pack-author` for pack creation/update, both installable into
   supported local agent platforms.
 - **Long-term value binding**: the Pack Protocol + generated repository context,
   NOT any one agent runtime.
@@ -40,7 +41,7 @@ The layers must never blur into one "big prompt repository":
 
 | Layer | Binding | Contents |
 |---|---|---|
-| 1. Execution (runtime) | Agent-platform adapter | `skill/polyrig/` — SKILL.md (flow, routing, decision tree, artifact formats ONLY; no knowledge prose) + templates |
+| 1. Execution (runtime) | Agent-platform adapter | `skill/polyrig/` — project initialization; `skill/polyrig-pack-author/` — pack creation and maintenance |
 | 2. Protocol & assets | Agent-neutral | `packs/{stack,domain}/` + `schemas/` (JSON Schemas for pack, feature_list, manifest) |
 | 3. Generated artifacts | Agent-neutral, live in the target project | SPEC.md, AGENTS.md, CLAUDE.md, feature_list.json, docs/stacks/, docs/domains/, docs/verify.md, deps.resolved.md, .polyrig/manifest.json, init.plan.md, init.sh |
 
@@ -68,6 +69,15 @@ polyrig/
         init.plan.md
         init.sh
         deps.resolved.md
+    polyrig-pack-author/
+      SKILL.md
+      agents/
+        openai.yaml
+      references/
+        pack-authoring-contract.md
+        review-prompts.md
+      assets/
+        pack-template/
 
   packs/
     stack/
@@ -83,7 +93,7 @@ polyrig/
     manifest.schema.json
 
   scripts/                  # zero-dependency Node (.mjs); no workspace toolchain
-    link-skill.mjs          # install skill/polyrig into supported agent platforms
+    link-skill.mjs          # install PolyRig skills into supported agent platforms
     validate-pack.mjs       # validate a pack dir against pack.schema.json
     build-pack-index.mjs    # scan pack roots, emit discovery index
     doctor.mjs              # env & install sanity check
@@ -114,6 +124,8 @@ packs/<type>/<id>/
     per-stack/         # domain packs only: per-stack implementation notes
       android.md
       backend-fastapi.md
+  references/
+    sources.md          # Evidence Matrix: source-backed/user-provided/inferred claims
   deps.yaml            # dependency COORDINATES + lookup strategy + official sources
                        # (never pinned "latest" versions in prose)
   verify.md            # self-check list for features built with this pack
@@ -142,8 +154,14 @@ trust:
 
 - Pack prose contains **slow-changing knowledge only** (decision trees, pitfalls,
   security red lines, verification reasoning).
+- Every pack carries `references/sources.md` with an Evidence Matrix. Strong
+  rules, red lines, recommended defaults, and dependency lookup entries cite
+  stable `[Evidence: E001]` ids. Evidence statuses are `source-backed`,
+  `user-provided`, `inferred`, or `unverified`; unverified evidence cannot
+  support strong rules.
 - Volatile facts (SDK versions, API details) live in `deps.yaml` as coordinates +
-  `lookup` query strategy + official doc URLs + `version_policy: verify_latest_before_use`.
+  `lookup` query strategy + official doc URLs + `version_policy: verify_latest_before_use`
+  plus `evidence: [...]`.
 - During assembly the AI verifies current versions/breaking changes online and
   writes results into the target project's **`deps.resolved.md`** with resolved-at
   date, source, confidence, and re-check action. Verified results are never
@@ -197,7 +215,7 @@ switch point is stated in SKILL.md.
 | `AGENTS.md` | **primary agent instruction file**: routing index to all context + hard rules (update feature state after every attempt; never mark `verified` without passing verification) |
 | `CLAUDE.md` | thin Claude Code entry that points to AGENTS.md; no duplicated content |
 | `feature_list.json` | plan-as-state; schema below |
-| `docs/stacks/<id>/`, `docs/domains/<id>/` | pack knowledge **physically copied** in (knowledge travels with the repo, enters git, readable by any agent on any machine) |
+| `docs/stacks/<id>/`, `docs/domains/<id>/` | pack knowledge and `sources.md` **physically copied** in (knowledge and evidence travel with the repo, enter git, readable by any agent on any machine) |
 | `docs/verify.md` | merged verification routes |
 | `deps.resolved.md` | dated, sourced, confidence-rated online verification results |
 | `.polyrig/manifest.json` | audit chain: polyrig_version, generated_at, language, selected_packs (id, version, source, last_reviewed, copied_to, checksum), overrides |
@@ -242,7 +260,7 @@ Deferred by roadmap:
 - v0.2 — `stack/web-nextjs`, auth-google web notes
 - v0.3 — `stack/ios`, `domain/auth-apple`
 - v0.4 — `domain/auth-wechat` (CN-ecosystem specifics)
-- later — pack authoring wizard (AI turns raw user material into protocol-compliant packs), `polyrig-update` upgrade command, remote packs
+- later — `polyrig-update` upgrade command, remote packs
 
 ## 7. v0.1 acceptance
 
