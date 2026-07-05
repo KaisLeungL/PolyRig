@@ -1,0 +1,13 @@
+id: domain/auth-github
+type: domain
+version: 0.1.0
+last_reviewed: 2026-07-05
+summary: GitHub sign-in domain knowledge (OAuth App authorization-code flow, no ID token / GET /user identity, numeric user id as key, email-privacy handling, login-identity vs app publisher identity separation)
+requires: [domain/auth-core]
+conflicts: []
+provides: [github-sign-in]
+stacks: [backend-fastapi, nextjs]
+trust:
+  level: builtin
+  scripts_enabled_by_default: false
+  requires_confirmation: false

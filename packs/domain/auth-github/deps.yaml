@@ -1,0 +1,62 @@
+# packs/domain/auth-github/deps.yaml
+#
+# Coordinates + lookup strategies for the FastAPI backend that acts as the
+# GitHub OAuth confidential client. The GitHub OAuth App flow is plain HTTPS
+# against documented endpoints (authorize, access_token, GET /user,
+# GET /user/emails) — there is no ID token and no required "sign in with
+# GitHub" SDK. NO pinned versions here or in knowledge prose: run each lookup
+# at assembly time, confirm the current endpoints/scopes on GitHub's official
+# docs, and record results in the target project's deps.resolved.md (dated,
+# sourced, confidence-rated). The Next.js frontend needs no GitHub-specific
+# package — it only navigates to the backend and consumes the session cookie.
+version_policy: verify_latest_before_use
+dependencies:
+  - coordinate: httpx (PyPI)
+    stack: backend-fastapi
+    source: official
+    evidence: [E013, E101]
+    purpose: >
+      Default — the async HTTP client that drives the OAuth token exchange
+      (POST /login/oauth/access_token) and the identity reads (GET /user,
+      GET /user/emails). Reuses the backend stack's existing async client;
+      no dedicated GitHub SDK is required for sign-in.
+    lookup:
+      query: "httpx latest version release notes AsyncClient timeout"
+      official_sources:
+        - https://www.python-httpx.org/
+        - https://pypi.org/project/httpx/
+        - https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
+        - https://docs.github.com/en/rest/users/emails
+      package_candidates:
+        - httpx
+    notes: >
+      Already declared by the backend-fastapi stack pack; listed here because
+      the GitHub flow depends on it directly. Set explicit connect/read
+      timeouts. Send `Accept: application/json` on the token exchange so the
+      response is JSON, not a URL-encoded query string. Verify the current
+      authorize / access_token endpoint paths and the scope names on the
+      official GitHub docs at resolution time — do not hardcode them from
+      memory or from tutorials.
+
+  - coordinate: Authlib (PyPI)
+    stack: backend-fastapi
+    source: official
+    evidence: [E014]
+    purpose: >
+      Alternative — a maintained OAuth 2.0 client library that implements the
+      authorization-code flow and token exchange, if the project prefers not to
+      hand-roll the redirect/exchange steps against raw HTTP.
+    lookup:
+      query: "Authlib python OAuth2 client authorization code flow latest version"
+      official_sources:
+        - https://docs.authlib.org/
+        - https://pypi.org/project/Authlib/
+        - https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps
+      package_candidates:
+        - Authlib
+    notes: >
+      Optional; not required for a working sign-in. If chosen, confirm its
+      current OAuth2 client API and how it surfaces the access token, and still
+      apply this pack's rules: minimal scope, numeric-id identity key, email via
+      GET /user/emails, and server-side custody of the token/secret. Verify the
+      library is current and maintained at resolution time before adopting it.
