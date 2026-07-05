@@ -53,7 +53,7 @@ polyrig/
   README.zh-CN.md           # Chinese
   LICENSE
   SPEC.md                   # this file
-  package.json              # only a `bin` entry so `npx github:...` can run link-skill.mjs; not published to npm
+  package.json              # published to npm as `polyrig`; `files` bundles the runtime, `bin` runs link-skill.mjs
   feature_list.json         # implementation plan & state for PolyRig itself
 
   skill/
@@ -108,11 +108,13 @@ polyrig/
     examples/
 ```
 
-Plain git repo, directory-per-concern. No npm workspaces, no build step, not
-published to the npm registry. `package.json` exists only to give `npx` a
-`bin` entry to resolve when running directly against the git repo.
-Install = `npx --yes github:KaisLeungL/PolyRig --copy` (no clone) or
-`node scripts/link-skill.mjs` (from a local clone).
+Plain git repo, directory-per-concern. No npm workspaces, no build step.
+Published to the npm registry as `polyrig`; its `files` allowlist bundles the
+runtime resources (`scripts/`, `packs/`, `schemas/`, `skill/`, `docs/`,
+`SPEC.md`) so the installed skills are self-sufficient. Install =
+`npx polyrig install` (no clone; stages the runtime into `~/.polyrig/runtime`
+and symlinks skills there) or `node scripts/link-skill.mjs` (from a local
+clone; symlinks skills straight to the checkout for live editing).
 
 ## 3. Pack Protocol
 

@@ -1,14 +1,29 @@
 #!/usr/bin/env node
 // link-skill.mjs — install PolyRig skills for supported agent platforms.
-// Native skill platforms get symlinks (or copies) to canonical skill dirs. Platforms
-// without a native skill folder get a small managed pointer/context file.
+//
+// Two install modes, auto-detected from where this script runs:
+//
+//   * git checkout (a `.git` is present next to the script's package root):
+//     developer mode. Native skill platforms are symlinked straight to
+//     `<repo>/skill/<name>` so `git pull` edits take effect live.
+//
+//   * npm / npx (no `.git`, e.g. `npx polyrig install`): the package tarball is
+//     staged into a stable runtime dir (`~/.polyrig/runtime`) — immune to npx
+//     cache eviction and separate from user packs in `~/.polyrig/packs` — and
+//     native skills are symlinked to `~/.polyrig/runtime/skill/<name>`. The
+//     skill resolves POLYRIG_ROOT to that runtime dir.
+//
+// Platforms without a native skill folder (Cursor, Gemini CLI, OpenCode) get a
+// small managed pointer/context file referencing the resolved install root.
 //
 // Usage:
-//   node scripts/link-skill.mjs [--platform <name|all>] [--copy] [--force] [--home <dir>]
+//   polyrig [install] [--platform <name|all>] [--copy] [--force] [--home <dir>]
+//   node scripts/link-skill.mjs [install] [--platform ...] [--copy] [--force] [--home <dir>]
 //
+//   install     Optional leading verb; installing is the default action.
 //   --platform  One of: all, claude-code, codex, cursor, gemini-cli, opencode.
 //               May be repeated or comma-separated. Default: all.
-//   --copy      Copy native skill directories instead of symlinking.
+//   --copy      Copy native skill directories instead of symlinking them.
 //   --force     Replace conflicting native destinations or dedicated pointer files.
 //   --home      Home directory override (for tests). Default: os.homedir().
 //
@@ -25,14 +40,12 @@ import { REPO_ROOT } from './lib/validate.mjs';
 const PLATFORM_NAMES = ['claude-code', 'codex', 'cursor', 'gemini-cli', 'opencode'];
 const MANAGED_BEGIN = '<!-- BEGIN POLYRIG MANAGED BLOCK -->';
 const MANAGED_END = '<!-- END POLYRIG MANAGED BLOCK -->';
-const SKILLS = [
-  { name: 'polyrig', path: join(REPO_ROOT, 'skill', 'polyrig') },
-  { name: 'polyrig-pack-author', path: join(REPO_ROOT, 'skill', 'polyrig-pack-author') },
-];
+// Resources the installed skills read at runtime via $POLYRIG_ROOT.
+const RUNTIME_RESOURCES = ['scripts', 'packs', 'schemas', 'skill', 'docs', 'SPEC.md'];
 
 function usage(msg) {
   if (msg) console.error(`error: ${msg}`);
-  console.error('usage: node scripts/link-skill.mjs [--platform <name|all>] [--copy] [--force] [--home <dir>]');
+  console.error('usage: polyrig [install] [--platform <name|all>] [--copy] [--force] [--home <dir>]');
   console.error(`platforms: all, ${PLATFORM_NAMES.join(', ')}`);
   process.exit(msg ? 1 : 0);
 }
@@ -46,6 +59,7 @@ let requestedPlatforms = [];
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
   if (a === '--help' || a === '-h') usage();
+  else if (a === 'install' || a === 'link') continue; // optional leading verb
   else if (a === '--copy') copy = true;
   else if (a === '--force') force = true;
   else if (a === '--platform') {
@@ -68,7 +82,39 @@ if (unknownPlatforms.length > 0) usage(`unknown platform(s): ${unknownPlatforms.
 
 const platforms = [...new Set(requestedPlatforms)];
 const homeDir = resolve(home);
-const legacyClaudeSrc = join(REPO_ROOT, 'skill', 'claude-code', 'polyrig');
+
+// SOURCE_ROOT is where this script's package lives — a git checkout or an npx
+// cache dir. INSTALL_ROOT is where the skills resolve POLYRIG_ROOT: the repo
+// itself in dev mode, or the staged runtime dir in npm mode.
+const SOURCE_ROOT = REPO_ROOT;
+const isGitCheckout = existsSync(join(SOURCE_ROOT, '.git'));
+const runtimeDir = join(homeDir, '.polyrig', 'runtime');
+const INSTALL_ROOT = isGitCheckout ? SOURCE_ROOT : runtimeDir;
+
+function stageRuntime() {
+  for (const name of RUNTIME_RESOURCES) {
+    const src = join(SOURCE_ROOT, name);
+    if (!existsSync(src)) {
+      console.error(`link-skill: cannot stage runtime — missing ${src}`);
+      process.exit(1);
+    }
+  }
+  mkdirSync(dirname(runtimeDir), { recursive: true });
+  rmSync(runtimeDir, { recursive: true, force: true });
+  mkdirSync(runtimeDir, { recursive: true });
+  for (const name of RUNTIME_RESOURCES) {
+    cpSync(join(SOURCE_ROOT, name), join(runtimeDir, name), { recursive: true });
+  }
+  console.log(`staged runtime: ${SOURCE_ROOT} -> ${runtimeDir}`);
+}
+
+if (!isGitCheckout) stageRuntime();
+
+const SKILLS = [
+  { name: 'polyrig', path: join(INSTALL_ROOT, 'skill', 'polyrig') },
+  { name: 'polyrig-pack-author', path: join(INSTALL_ROOT, 'skill', 'polyrig-pack-author') },
+];
+const legacyClaudeSrc = join(INSTALL_ROOT, 'skill', 'claude-code', 'polyrig');
 
 for (const skill of SKILLS) {
   if (!existsSync(skill.path)) {
@@ -188,7 +234,7 @@ function pointerText(platform) {
     '',
     'When the user types `/polyrig`, mentions PolyRig, wants to cold-start an agent-ready project, or asks to assemble project context for AI coding agents:',
     `1. Read and follow the PolyRig skill at \`${join(SKILLS[0].path, 'SKILL.md')}\`.`,
-    `2. Treat \`${REPO_ROOT}\` as POLYRIG_ROOT for all PolyRig script calls.`,
+    `2. Treat \`${INSTALL_ROOT}\` as POLYRIG_ROOT for all PolyRig script calls.`,
     '3. Do not improvise stack or domain knowledge; use the packs discovered by PolyRig.',
     '',
     'When the user wants to create, update, review, or validate a PolyRig pack:',
@@ -224,3 +270,4 @@ for (const platform of platforms) {
 }
 
 console.log(`done. PolyRig skills are installed for: ${platforms.join(', ')}.`);
+console.log(`POLYRIG_ROOT: ${INSTALL_ROOT}`);

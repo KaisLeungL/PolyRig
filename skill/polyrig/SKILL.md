@@ -20,10 +20,11 @@ if a pack does not cover something, say so and record it as a constraint or note
 
 ## Step 0 — Resolve POLYRIG_ROOT (once, before P2)
 
-This skill is normally installed as a symlink from an agent-specific location
-to `<repo>/skill/polyrig`. Resolve the repo root once and reuse it for every
-script call. Prefer `POLYRIG_ROOT` if the user or launcher has set it; otherwise
-try the common native skill install locations:
+This skill is installed as a symlink from an agent-specific location to the
+PolyRig install root's `skill/polyrig`. The install root is `~/.polyrig/runtime`
+(when installed via `npx polyrig install`) or a git checkout (developer mode).
+Resolve it once and reuse it for every script call. Prefer `POLYRIG_ROOT` if the
+user or launcher has set it; otherwise walk up from the native skill symlink:
 
 ```bash
 if [ -z "${POLYRIG_ROOT:-}" ]; then
@@ -34,12 +35,16 @@ if [ -z "${POLYRIG_ROOT:-}" ]; then
     fi
   done
 fi
+# Fall back to the staged runtime dir if the walk above did not resolve.
+if [ -z "${POLYRIG_ROOT:-}" ] && [ -d "$HOME/.polyrig/runtime/scripts" ]; then
+  POLYRIG_ROOT="$HOME/.polyrig/runtime"
+fi
 ```
 
-Then verify `$POLYRIG_ROOT/scripts/build-pack-index.mjs` exists. If it does not
-(the skill was copied instead of symlinked), ask the user for the path to their
-PolyRig repo checkout and use that as `POLYRIG_ROOT`; if they have none, stop and
-tell them to clone the repo and run `node scripts/link-skill.mjs`.
+Then verify `$POLYRIG_ROOT/scripts/build-pack-index.mjs` exists. If it does not,
+tell the user to run `npx polyrig install` (which stages the runtime under
+`~/.polyrig/runtime`); if they have a PolyRig git checkout instead, ask for its
+path and use that as `POLYRIG_ROOT`.
 
 ## The interview — seven phases
 

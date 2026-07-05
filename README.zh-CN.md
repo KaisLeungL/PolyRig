@@ -101,30 +101,32 @@ content/safety）——绝不在编写上下文里自我审查。
 
 ## 安装
 
-不需要 clone —— `npx` 直接拉取仓库并运行安装脚本（没有发布到 npm registry，这里用的
-是 npx 内置的 git spec 支持）：
+一条命令，不需要 clone：
 
 ```sh
-npx --yes github:KaisLeungL/PolyRig --copy
+npx polyrig install
 ```
 
-`--copy` 这个参数很关键：不加的话，安装的 skill 会以 symlink 形式指向 npx 的临时
-缓存目录，这个缓存以后可能被清掉，届时链接就会变成悬空链接。加上 `--copy` 会写入
-真实文件，安装结果不再依赖 npx 缓存是否还在。
+`npx` 会下载已发布的 npm 包（其中打包了 skill 运行时所需的 packs、scripts、
+schemas），然后运行安装脚本。安装脚本会先把**运行时暂存**到 `~/.polyrig/runtime`
+——这是一个不受 npx 缓存清理影响的稳定目录——再把 `/polyrig` 和
+`/polyrig-pack-author` 两个 skill 以 symlink 安装到你本机的 agent 平台，并把
+`POLYRIG_ROOT` 指向该运行时。随时重跑同一条命令即可升级。
 
 如果你打算靠 `git pull` 跟踪更新，或者想要 symlink 跟随同一份 checkout，优先用本地
-clone：
+clone —— 在 git checkout 下安装脚本会跳过暂存、直接把 skill symlink 到仓库，改动即时
+生效：
 
 ```sh
 git clone https://github.com/KaisLeungL/PolyRig.git && cd PolyRig
 node scripts/link-skill.mjs
 ```
 
-两种方式底层都是：纯 git 仓库、零依赖 Node 脚本、没有 workspace 工具链、没有构建
-步骤。默认会把 `skill/polyrig/` 和 `skill/polyrig-pack-author/` 安装到所有已支持的
-本机 agent 平台：Claude Code 和 Codex 使用原生 skill 链接（加 `--copy` 则是拷贝）；
-Cursor、Gemini CLI 和 OpenCode 写入受管理的 pointer/context 文件。只安装单个平台，
-在以上任一条命令后加 `--platform claude-code|codex|cursor|gemini-cli|opencode`。
+两种方式底层都是：零依赖 Node 脚本、没有 workspace 工具链、没有构建步骤。默认会把
+两个 skill 安装到所有已支持的本机 agent 平台：Claude Code 和 Codex 使用原生 skill
+链接（加 `--copy` 则是拷贝）；Cursor、Gemini CLI 和 OpenCode 写入受管理的
+pointer/context 文件。只安装单个平台，在以上任一条命令后加
+`--platform claude-code|codex|cursor|gemini-cli|opencode`。
 
 ## v0.1 范围 —— 黄金路径
 

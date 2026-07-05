@@ -16,7 +16,7 @@ A small real project: **Android app + FastAPI backend with Google Sign-In**
 
 ## Prerequisites (human setup, before the demo)
 
-- [ ] PolyRig installed for the agent you will use: `node scripts/link-skill.mjs` (doctor passes: `node scripts/doctor.mjs`)
+- [ ] PolyRig installed for the agent you will use: `npx polyrig install` (from a git clone, `node scripts/link-skill.mjs`; doctor passes: `node scripts/doctor.mjs`)
 - [ ] Google Cloud project with OAuth consent screen (testing mode is fine; add your test account)
 - [ ] OAuth client IDs created: one **Web** client (the backend audience), one **Android** client (debug SHA-1 registered)
 - [ ] Android device or emulator with a signed-in Google account

@@ -1,7 +1,7 @@
 {
   "name": "polyrig",
   "version": "0.1.0",
-  "description": "Universal AI harness pack protocol and context assembly system. Running this package's bin installs the /polyrig and /polyrig-pack-author skills for your local agent platforms (Claude Code, Codex, Cursor, Gemini CLI, OpenCode) — the same thing scripts/link-skill.mjs does.",
+  "description": "Universal AI harness pack protocol and context assembly system. `npx polyrig install` stages the runtime and installs the /polyrig and /polyrig-pack-author skills for your local agent platforms (Claude Code, Codex, Cursor, Gemini CLI, OpenCode).",
   "license": "MIT",
   "homepage": "https://github.com/KaisLeungL/PolyRig",
   "repository": {
@@ -12,6 +12,26 @@
     "node": ">=18"
   },
   "bin": {
-    "polyrig": "./scripts/link-skill.mjs"
+    "polyrig": "scripts/link-skill.mjs"
+  },
+  "files": [
+    "scripts/",
+    "!scripts/test-*.mjs",
+    "packs/",
+    "schemas/",
+    "skill/",
+    "docs/",
+    "!docs/plans/",
+    "SPEC.md",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node scripts/test-link-skill.mjs && node scripts/test-build-pack-index.mjs && node scripts/test-validate-pack-evidence.mjs && node scripts/test-validate-pack-verify-tools.mjs && node scripts/test-validate-artifacts.mjs",
+    "doctor": "node scripts/doctor.mjs"
   }
 }

@@ -72,7 +72,7 @@ for (const platform of [
     let linkStat = null;
     try { linkStat = lstatSync(linkDest); } catch { /* absent */ }
     if (linkStat === null) {
-      warn(`${skill.name} not installed for ${platform.name} at ${linkDest} — run: node scripts/link-skill.mjs --platform all`);
+      warn(`${skill.name} not installed for ${platform.name} at ${linkDest} — run: npx polyrig install`);
     } else if (linkStat.isSymbolicLink()) {
       let target = null;
       try { target = realpathSync(linkDest); } catch { /* dangling */ }

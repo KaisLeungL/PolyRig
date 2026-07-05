@@ -118,33 +118,34 @@ Full walkthrough with a worked example: [docs/authoring-packs.md](docs/authoring
 
 ## Install
 
-No clone needed — `npx` fetches the repo and runs the installer directly
-(there is no npm-registry package; this uses npx's built-in git-spec support):
+One command, no clone needed:
 
 ```sh
-npx --yes github:KaisLeungL/PolyRig --copy
+npx polyrig install
 ```
 
-`--copy` matters here: without it, the installed skills are symlinked into a
-temporary `npx` cache directory that can be evicted later, which would leave
-dangling links. `--copy` writes real files instead, so the install survives
-independently of the npx cache.
+`npx` downloads the published package (which bundles the packs, scripts, and
+schemas the skills need at runtime) and runs the installer. The installer
+**stages the runtime** into `~/.polyrig/runtime` — a stable directory that
+survives npx cache eviction — then symlinks the `/polyrig` and
+`/polyrig-pack-author` skills for your local agent platforms, pointing
+`POLYRIG_ROOT` at that runtime. Re-run the same command any time to upgrade.
 
 Prefer a local clone if you plan to track updates with `git pull` or want
-symlinks that follow a single checkout:
+symlinks that follow a single checkout — in a git checkout the installer skips
+staging and symlinks the skills straight to the repo, so edits take effect live:
 
 ```sh
 git clone https://github.com/KaisLeungL/PolyRig.git && cd PolyRig
 node scripts/link-skill.mjs
 ```
 
-Either way it's a plain git repo, zero-dependency Node scripts, no workspace
-toolchain, no build step. By default this installs `skill/polyrig/` and
-`skill/polyrig-pack-author/` for all supported local agent platforms: Claude
-Code and Codex get native skill links (or copies, with `--copy`); Cursor,
-Gemini CLI, and OpenCode get managed pointer/context files. To install one
-target only, add `--platform claude-code|codex|cursor|gemini-cli|opencode` to
-either command above.
+Either way it's zero-dependency Node scripts, no workspace toolchain, no build
+step. By default this installs the two skills for all supported local agent
+platforms: Claude Code and Codex get native skill links (or copies, with
+`--copy`); Cursor, Gemini CLI, and OpenCode get managed pointer/context files.
+To install one target only, add
+`--platform claude-code|codex|cursor|gemini-cli|opencode` to either command.
 
 ## v0.1 scope — golden path
 

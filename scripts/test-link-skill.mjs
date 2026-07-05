@@ -12,6 +12,7 @@ import {
   existsSync,
   mkdirSync,
   symlinkSync,
+  cpSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -75,6 +76,43 @@ try {
   });
 } finally {
   rmSync(home, { recursive: true, force: true });
+}
+
+// --- npm-tarball mode: no .git → stage runtime into ~/.polyrig/runtime -------
+// Build a package dir that mirrors what `npm pack` ships (the files allowlist),
+// with no .git, and confirm the installer stages a runtime dir and symlinks the
+// native skills to it rather than to the source package.
+{
+  const home2 = mkdtempSync(join(tmpdir(), 'polyrig-npm-home-'));
+  const pkg = mkdtempSync(join(tmpdir(), 'polyrig-npm-pkg-'));
+  try {
+    for (const res of ['scripts', 'packs', 'schemas', 'skill', 'docs', 'SPEC.md']) {
+      cpSync(join(REPO_ROOT, res), join(pkg, res), { recursive: true });
+    }
+    assert(!existsSync(join(pkg, '.git')), 'staged package must not contain a .git');
+
+    execFileSync(process.execPath, [join(pkg, 'scripts', 'link-skill.mjs'), 'install', '--platform', 'claude-code', '--home', home2], {
+      cwd: pkg,
+      stdio: 'pipe',
+    });
+
+    const runtime = join(home2, '.polyrig', 'runtime');
+    assert(existsSync(join(runtime, 'scripts', 'build-pack-index.mjs')), 'runtime should contain scripts');
+    assert(existsSync(join(runtime, 'packs')), 'runtime should contain packs');
+    assert(existsSync(join(runtime, 'schemas')), 'runtime should contain schemas');
+
+    for (const name of ['polyrig', 'polyrig-pack-author']) {
+      const dest = join(home2, '.claude', 'skills', name);
+      assertSymlink(dest, join(runtime, 'skill', name));
+      // POLYRIG_ROOT walk (../..) from the symlink target must reach the runtime.
+      const rootFromWalk = join(realpathSync(dest), '..', '..');
+      assert(existsSync(join(rootFromWalk, 'scripts', 'build-pack-index.mjs')),
+        `POLYRIG_ROOT walk from ${name} should reach runtime scripts`);
+    }
+  } finally {
+    rmSync(home2, { recursive: true, force: true });
+    rmSync(pkg, { recursive: true, force: true });
+  }
 }
 
 console.log('test-link-skill: PASS');
