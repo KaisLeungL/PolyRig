@@ -47,6 +47,7 @@ try {
   const skills = [
     { name: 'polyrig', path: join(REPO_ROOT, 'skill', 'polyrig') },
     { name: 'polyrig-pack-author', path: join(REPO_ROOT, 'skill', 'polyrig-pack-author') },
+    { name: 'polyrig-pack-install', path: join(REPO_ROOT, 'skill', 'polyrig-pack-install') },
   ];
   for (const skill of skills) {
     assertSymlink(join(home, '.claude', 'skills', skill.name), skill.path);
@@ -57,18 +58,21 @@ try {
   assert(existsSync(cursorRule), 'Cursor rule should be installed');
   assertIncludes(cursorRule, 'skill/polyrig/SKILL.md', 'Cursor rule');
   assertIncludes(cursorRule, 'skill/polyrig-pack-author/SKILL.md', 'Cursor rule');
+  assertIncludes(cursorRule, 'skill/polyrig-pack-install/SKILL.md', 'Cursor rule');
 
   const geminiContext = join(home, '.gemini', 'GEMINI.md');
   assert(existsSync(geminiContext), 'Gemini context should be installed');
   assertIncludes(geminiContext, 'BEGIN POLYRIG MANAGED BLOCK', 'Gemini context');
   assertIncludes(geminiContext, 'skill/polyrig/SKILL.md', 'Gemini context');
   assertIncludes(geminiContext, 'skill/polyrig-pack-author/SKILL.md', 'Gemini context');
+  assertIncludes(geminiContext, 'skill/polyrig-pack-install/SKILL.md', 'Gemini context');
 
   const opencodeContext = join(home, '.config', 'opencode', 'AGENTS.md');
   assert(existsSync(opencodeContext), 'OpenCode context should be installed');
   assertIncludes(opencodeContext, 'BEGIN POLYRIG MANAGED BLOCK', 'OpenCode context');
   assertIncludes(opencodeContext, 'skill/polyrig/SKILL.md', 'OpenCode context');
   assertIncludes(opencodeContext, 'skill/polyrig-pack-author/SKILL.md', 'OpenCode context');
+  assertIncludes(opencodeContext, 'skill/polyrig-pack-install/SKILL.md', 'OpenCode context');
 
   execFileSync(process.execPath, ['scripts/link-skill.mjs', '--platform', 'all', '--home', home], {
     cwd: REPO_ROOT,
@@ -101,7 +105,7 @@ try {
     assert(existsSync(join(runtime, 'packs')), 'runtime should contain packs');
     assert(existsSync(join(runtime, 'schemas')), 'runtime should contain schemas');
 
-    for (const name of ['polyrig', 'polyrig-pack-author']) {
+    for (const name of ['polyrig', 'polyrig-pack-author', 'polyrig-pack-install']) {
       const dest = join(home2, '.claude', 'skills', name);
       assertSymlink(dest, join(runtime, 'skill', name));
       // POLYRIG_ROOT walk (../..) from the symlink target must reach the runtime.

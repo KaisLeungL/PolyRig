@@ -113,6 +113,7 @@ if (!isGitCheckout) stageRuntime();
 const SKILLS = [
   { name: 'polyrig', path: join(INSTALL_ROOT, 'skill', 'polyrig') },
   { name: 'polyrig-pack-author', path: join(INSTALL_ROOT, 'skill', 'polyrig-pack-author') },
+  { name: 'polyrig-pack-install', path: join(INSTALL_ROOT, 'skill', 'polyrig-pack-install') },
 ];
 const legacyClaudeSrc = join(INSTALL_ROOT, 'skill', 'claude-code', 'polyrig');
 
@@ -240,6 +241,10 @@ function pointerText(platform) {
     'When the user wants to create, update, review, or validate a PolyRig pack:',
     `1. Read and follow the PolyRig pack authoring skill at \`${join(SKILLS[1].path, 'SKILL.md')}\`.`,
     '2. Keep pack authoring separate from `/polyrig` project initialization.',
+    '',
+    'When the user pastes a PolyRig registry pack URL, or wants to install or update a shared pack:',
+    `1. Read and follow the PolyRig pack install skill at \`${join(SKILLS[2].path, 'SKILL.md')}\`.`,
+    `2. Treat \`${INSTALL_ROOT}\` as POLYRIG_ROOT for the installer script.`,
     '',
   ].join('\n');
 }

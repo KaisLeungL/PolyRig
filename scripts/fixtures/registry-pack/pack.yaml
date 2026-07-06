@@ -1,0 +1,13 @@
+id: domain/hello-registry
+type: domain
+version: 0.1.0
+last_reviewed: 2026-07-05
+summary: Minimal demo pack used to exercise the PolyRig pack registry end to end.
+requires: []
+conflicts: []
+provides: [hello-registry-demo]
+stacks: []
+trust:
+  level: remote
+  scripts_enabled_by_default: false
+  requires_confirmation: true

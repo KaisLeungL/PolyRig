@@ -48,13 +48,14 @@ The layers must never blur into one "big prompt repository"
 
 | Layer | Binding | Contents |
 |---|---|---|
-| 1. Execution (runtime) | Agent-platform adapter | `skill/polyrig/` — project initialization; `skill/polyrig-pack-author/` — pack creation and maintenance |
+| 1. Execution (runtime) | Agent-platform adapter | `skill/polyrig/` — project initialization; `skill/polyrig-pack-author/` — pack creation and maintenance; `skill/polyrig-pack-install/` — install/update packs from a registry |
 | 2. Protocol & assets | Agent-neutral | `packs/{stack,domain}/` + `schemas/` (JSON Schemas for pack, feature_list, manifest) |
 | 3. Generated artifacts | Agent-neutral, live in the target project | SPEC.md, AGENTS.md, CLAUDE.md, feature_list.json, docs/stacks/, docs/domains/, docs/verify.md, deps.resolved.md, .polyrig/manifest.json, init.plan.md, init.sh |
 
 The v1 execution entries are the PolyRig skills: `/polyrig` initializes target
-projects, while `polyrig-pack-author` creates and updates packs. Both are
-installable into Claude Code, Codex, Cursor, Gemini CLI, and OpenCode. The
+projects, `polyrig-pack-author` creates and updates packs, and
+`polyrig-pack-install` installs packs shared through a PolyRig registry. All
+are installable into Claude Code, Codex, Cursor, Gemini CLI, and OpenCode. The
 long-term value binds to the **Pack Protocol and the generated repository
 context**, not to any one agent runtime.
 
@@ -127,9 +128,10 @@ npx polyrig install
 `npx` downloads the published package (which bundles the packs, scripts, and
 schemas the skills need at runtime) and runs the installer. The installer
 **stages the runtime** into `~/.polyrig/runtime` — a stable directory that
-survives npx cache eviction — then symlinks the `/polyrig` and
-`/polyrig-pack-author` skills for your local agent platforms, pointing
-`POLYRIG_ROOT` at that runtime. Re-run the same command any time to upgrade.
+survives npx cache eviction — then symlinks the `/polyrig`,
+`/polyrig-pack-author`, and `/polyrig-pack-install` skills for your local agent
+platforms, pointing `POLYRIG_ROOT` at that runtime. Re-run the same command any
+time to upgrade.
 
 Prefer a local clone if you plan to track updates with `git pull` or want
 symlinks that follow a single checkout — in a git checkout the installer skips
@@ -141,7 +143,7 @@ node scripts/link-skill.mjs
 ```
 
 Either way it's zero-dependency Node scripts, no workspace toolchain, no build
-step. By default this installs the two skills for all supported local agent
+step. By default this installs the three skills for all supported local agent
 platforms: Claude Code and Codex get native skill links (or copies, with
 `--copy`); Cursor, Gemini CLI, and OpenCode get managed pointer/context files.
 To install one target only, add
@@ -162,15 +164,6 @@ Depth over breadth: focused built-in packs, one end-to-end demo.
 Secondary gates: `scripts/validate-pack.mjs` passes on all builtin packs, and
 generated artifacts validate against `schemas/` (checked by
 `scripts/validate-artifacts.mjs`).
-
-## Roadmap
-
-| Version | Scope |
-|---|---|
-| v0.2 | `stack/web-nextjs`, auth-google web notes |
-| v0.3 | `domain/auth-apple` |
-| v0.4 | `domain/auth-wechat` (CN-ecosystem specifics) |
-| later | `polyrig-update` upgrade command, remote packs |
 
 ## Non-goals
 

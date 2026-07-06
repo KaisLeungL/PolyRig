@@ -1,0 +1,96 @@
+# packs/stack/nextjs/deps.yaml
+# Coordinates + lookup strategies. No pinned versions: resolve online at
+# assembly time and record results in the target project's deps.resolved.md.
+version_policy: verify_latest_before_use
+dependencies:
+  - coordinate: next (npm)
+    purpose: The Next.js framework — App Router, server/client components, routing, server actions
+    evidence: [E101]
+    lookup:
+      query: "next.js latest version release notes breaking changes app router"
+      official_sources:
+        - https://nextjs.org/docs/app/getting-started/installation
+        - https://nextjs.org/blog
+        - https://www.npmjs.com/package/next
+      package_candidates: [next]
+    notes: CRITICAL — App Router caching defaults, dynamic APIs (cookies/headers), and server-action APIs have changed across majors. Confirm the resolved major's behavior before writing data-fetching, caching, or mutation code.
+
+  - coordinate: react (npm)
+    purpose: React runtime — server and client components
+    evidence: [E102]
+    lookup:
+      query: "react version compatible with next.js version"
+      official_sources:
+        - https://react.dev/versions
+        - https://www.npmjs.com/package/react
+        - https://www.npmjs.com/package/react-dom
+      package_candidates: [react, react-dom]
+    notes: The React version is coupled to the chosen Next.js version — install the react/react-dom pair that the resolved Next.js version requires, not the newest independent release.
+
+  - coordinate: typescript (npm)
+    purpose: Static typing for the app and the type-check verification route
+    evidence: [E103, E015]
+    lookup:
+      query: "typescript latest version release notes"
+      official_sources:
+        - https://www.typescriptlang.org/docs/
+        - https://www.npmjs.com/package/typescript
+      package_candidates: [typescript]
+    notes: Pin as a dev dependency. Confirm compatibility with the resolved Next.js version's bundled type support and the chosen ESLint TypeScript plugin.
+
+  - coordinate: tailwindcss (npm)
+    purpose: Utility-first CSS framework for styling
+    evidence: [E104, E016]
+    lookup:
+      query: "tailwindcss latest version installation nextjs setup"
+      official_sources:
+        - https://tailwindcss.com/docs/installation
+        - https://www.npmjs.com/package/tailwindcss
+      package_candidates: [tailwindcss, "@tailwindcss/postcss", postcss, autoprefixer]
+    notes: Install and config steps differ substantially between Tailwind majors (PostCSS plugin, config file shape, content globs). Follow the setup for the resolved major, not a remembered one.
+
+  - coordinate: eslint-config-next (npm)
+    purpose: Lint configuration for Next.js, driving the lint verification route
+    evidence: [E105]
+    lookup:
+      query: "eslint-config-next setup eslint flat config nextjs version"
+      official_sources:
+        - https://nextjs.org/docs/app/api-reference/config/eslint
+        - https://www.npmjs.com/package/eslint-config-next
+      package_candidates: [eslint, eslint-config-next]
+    notes: The lint config format (legacy vs flat config) and whether linting runs via the framework CLI or ESLint directly track the resolved Next.js version — confirm the current wiring before adding lint scripts.
+
+  - coordinate: test-runner (npm)
+    purpose: Test runner for component/unit and/or end-to-end tests
+    evidence: [E106, E017]
+    lookup:
+      query: "nextjs testing vitest jest playwright setup latest"
+      official_sources:
+        - https://nextjs.org/docs/app/building-your-application/testing
+        - https://vitest.dev/
+        - https://playwright.dev/
+      package_candidates: [vitest, jest, "@playwright/test", playwright, "@testing-library/react"]
+    notes: Choice is a project decision — a component runner (Vitest/Jest + Testing Library) for units, Playwright for end-to-end. Pick per project and resolve that runner's version and Next.js integration; do not run two component runners at once.
+
+  - coordinate: node (runtime)
+    purpose: Node.js runtime version policy for the project
+    evidence: [E107]
+    lookup:
+      query: "nextjs supported node version system requirements node lts schedule"
+      official_sources:
+        - https://nextjs.org/docs/app/getting-started/installation
+        - https://nodejs.org/en/about/previous-releases
+      package_candidates: []
+    notes: Policy, not a package — pick an active Node LTS that meets the resolved Next.js version's minimum, and record it in the project's engines field and any toolchain/CI config.
+
+  - coordinate: package-manager (tool)
+    purpose: Package manager and lockfile policy (npm, pnpm, or yarn)
+    evidence: [E108]
+    lookup:
+      query: "pnpm npm yarn latest version lockfile workspace"
+      official_sources:
+        - https://pnpm.io/
+        - https://docs.npmjs.com/
+        - https://yarnpkg.com/
+      package_candidates: []
+    notes: Pick ONE at project start and commit its lockfile; installs sync from the lockfile. Substitute this tool's invocation consistently wherever verify.md shows a package-manager command.

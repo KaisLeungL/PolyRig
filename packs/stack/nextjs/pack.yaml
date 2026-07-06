@@ -1,0 +1,13 @@
+id: stack/nextjs
+type: stack
+version: 0.1.0
+last_reviewed: 2026-07-05
+summary: Next.js App Router frontend conventions — server/client component boundaries, data fetching and caching, session consumption, mutations via server actions/route handlers, and verification routes
+requires: []
+conflicts: []
+provides: [web-frontend, react-frontend]
+stacks: []
+trust:
+  level: builtin
+  scripts_enabled_by_default: false
+  requires_confirmation: false

@@ -41,14 +41,14 @@ v0.1 的验收就是一条端到端叙事：
 
 | 层 | 绑定 | 内容 |
 |---|---|---|
-| 1. 执行层（运行时） | agent 平台适配层 | `skill/polyrig/` —— 初始化项目；`skill/polyrig-pack-author/` —— 创建和维护 pack |
+| 1. 执行层（运行时） | agent 平台适配层 | `skill/polyrig/` —— 初始化项目；`skill/polyrig-pack-author/` —— 创建和维护 pack；`skill/polyrig-pack-install/` —— 从 registry 安装/更新 pack |
 | 2. 协议与资产层 | agent 中立 | `packs/{stack,domain}/` + `schemas/`（pack、feature_list、manifest 的 JSON Schema） |
 | 3. 生成产物层 | agent 中立，落在目标项目里 | SPEC.md、AGENTS.md、CLAUDE.md、feature_list.json、docs/stacks/、docs/domains/、docs/verify.md、deps.resolved.md、.polyrig/manifest.json、init.plan.md、init.sh |
 
 v1 的执行入口是一组 PolyRig skills：`/polyrig` 初始化目标项目，
-`polyrig-pack-author` 创建和维护 packs。两者都可安装到 Claude Code、Codex、Cursor、
-Gemini CLI 和 OpenCode。长期价值绑定在 **包协议 + 生成的仓库上下文** 上，而不是某一个
-agent 运行时。
+`polyrig-pack-author` 创建和维护 packs，`polyrig-pack-install` 从 PolyRig registry
+安装共享的 packs。三者都可安装到 Claude Code、Codex、Cursor、Gemini CLI 和 OpenCode。
+长期价值绑定在 **包协议 + 生成的仓库上下文** 上，而不是某一个 agent 运行时。
 
 ## 包协议概览
 
@@ -109,9 +109,9 @@ npx polyrig install
 
 `npx` 会下载已发布的 npm 包（其中打包了 skill 运行时所需的 packs、scripts、
 schemas），然后运行安装脚本。安装脚本会先把**运行时暂存**到 `~/.polyrig/runtime`
-——这是一个不受 npx 缓存清理影响的稳定目录——再把 `/polyrig` 和
-`/polyrig-pack-author` 两个 skill 以 symlink 安装到你本机的 agent 平台，并把
-`POLYRIG_ROOT` 指向该运行时。随时重跑同一条命令即可升级。
+——这是一个不受 npx 缓存清理影响的稳定目录——再把 `/polyrig`、
+`/polyrig-pack-author` 和 `/polyrig-pack-install` 三个 skill 以 symlink 安装到你本机的
+agent 平台，并把 `POLYRIG_ROOT` 指向该运行时。随时重跑同一条命令即可升级。
 
 如果你打算靠 `git pull` 跟踪更新，或者想要 symlink 跟随同一份 checkout，优先用本地
 clone —— 在 git checkout 下安装脚本会跳过暂存、直接把 skill symlink 到仓库，改动即时
@@ -123,7 +123,7 @@ node scripts/link-skill.mjs
 ```
 
 两种方式底层都是：零依赖 Node 脚本、没有 workspace 工具链、没有构建步骤。默认会把
-两个 skill 安装到所有已支持的本机 agent 平台：Claude Code 和 Codex 使用原生 skill
+三个 skill 安装到所有已支持的本机 agent 平台：Claude Code 和 Codex 使用原生 skill
 链接（加 `--copy` 则是拷贝）；Cursor、Gemini CLI 和 OpenCode 写入受管理的
 pointer/context 文件。只安装单个平台，在以上任一条命令后加
 `--platform claude-code|codex|cursor|gemini-cli|opencode`。
@@ -142,15 +142,6 @@ pointer/context 文件。只安装单个平台，在以上任一条命令后加
 
 次级验收门槛：`scripts/validate-pack.mjs` 在所有内置包上通过；生成的产物能通过
 `schemas/` 校验（由 `scripts/validate-artifacts.mjs` 检查）。
-
-## 路线图
-
-| 版本 | 范围 |
-|---|---|
-| v0.2 | `stack/web-nextjs`、auth-google 的 web 笔记 |
-| v0.3 | `domain/auth-apple` |
-| v0.4 | `domain/auth-wechat`（中国生态特有事项） |
-| 之后 | `polyrig-update` 升级命令、远程包 |
 
 ## 非目标
 
