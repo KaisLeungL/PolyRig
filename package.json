@@ -1,6 +1,6 @@
 {
   "name": "polyrig",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Universal AI harness pack protocol and context assembly system. `npx polyrig install` stages the runtime and installs the /polyrig, /polyrig-pack-author, and /polyrig-pack-install skills for your local agent platforms (Claude Code, Codex, Cursor, Gemini CLI, OpenCode).",
   "license": "MIT",
   "homepage": "https://github.com/KaisLeungL/PolyRig",
