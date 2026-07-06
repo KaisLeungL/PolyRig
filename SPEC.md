@@ -1,6 +1,7 @@
-# PolyRig — Specification (v0.1)
+# PolyRig — Specification (v0.2)
 
-> Status: locked 2026-07-04 after design grill session.
+> Status: core spec locked 2026-07-04 after design grill session; v0.2 shipped
+> npm install, pack authoring, and the registry loop (see §6 roadmap).
 > Implementation plan lives in `feature_list.json` (plan-as-state; no separate PLAN.md).
 
 ## 1. Positioning
@@ -79,15 +80,19 @@ polyrig/
         review-prompts.md
       assets/
         pack-template/
+    polyrig-pack-install/
+      SKILL.md
 
   packs/
     stack/
       android/
       backend-fastapi/
       ios/
+      nextjs/
     domain/
       auth-core/
       auth-google/
+      auth-github/
 
   schemas/
     pack.schema.json
@@ -96,22 +101,26 @@ polyrig/
 
   scripts/                  # zero-dependency Node (.mjs); no workspace toolchain
     link-skill.mjs          # install PolyRig skills into supported agent platforms
+    install-pack.mjs        # download/verify/install packs from a PolyRig registry
     validate-pack.mjs       # validate a pack dir against pack.schema.json
     validate-artifacts.mjs  # validate a target project's generated JSON artifacts
     build-pack-index.mjs    # scan pack roots, emit discovery index
     doctor.mjs              # env & install sanity check
 
-  docs/
+  docs/                     # internal docs — gitignored, not published to npm
     architecture.md
     pack-protocol.md
     authoring-packs.md
+    registry.md
     examples/
+    plans/
 ```
 
 Plain git repo, directory-per-concern. No npm workspaces, no build step.
 Published to the npm registry as `polyrig`; its `files` allowlist bundles the
-runtime resources (`scripts/`, `packs/`, `schemas/`, `skill/`, `docs/`,
-`SPEC.md`) so the installed skills are self-sufficient. Install =
+runtime resources (`scripts/`, `packs/`, `schemas/`, `skill/`, `SPEC.md`) so the
+installed skills are self-sufficient. `docs/` is neither tracked in git nor
+published — the runtime does not read it. Install =
 `npx polyrig install` (no clone; stages the runtime into `~/.polyrig/runtime`
 and symlinks skills there) or `node scripts/link-skill.mjs` (from a local
 clone; symlinks skills straight to the checkout for live editing).
@@ -264,12 +273,17 @@ Built-in packs (5, depth over breadth):
 - `domain/auth-core` (shared OAuth/OIDC architecture, token/session handling, CSRF/nonce/state, secure storage principles)
 - `domain/auth-google` (requires auth-core; per-stack notes for android + backend-fastapi)
 
+Shipped since v0.1:
+
+- v0.2 — `stack/nextjs` (App Router frontend), `domain/auth-github`; npm install
+  (`npx polyrig install`), the `polyrig-pack-author` skill, and the registry
+  loop (`polyrig-pack-install` + polyrig.dev) — remote packs are live.
+
 Deferred by roadmap:
 
-- v0.2 — `stack/web-nextjs`, auth-google web notes
 - v0.3 — `domain/auth-apple`
 - v0.4 — `domain/auth-wechat` (CN-ecosystem specifics)
-- later — `polyrig-update` upgrade command, remote packs
+- later — `polyrig-update` in-place upgrade command
 
 ## 7. v0.1 acceptance
 

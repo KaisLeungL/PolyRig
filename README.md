@@ -43,8 +43,7 @@ agent-ready. That is the whole point.
 
 ## Three-layer architecture
 
-The layers must never blur into one "big prompt repository"
-(see [docs/architecture.md](docs/architecture.md)):
+The layers must never blur into one "big prompt repository":
 
 | Layer | Binding | Contents |
 |---|---|---|
@@ -86,8 +85,6 @@ Key rules:
 - Selected pack knowledge is **physically copied** into the target project so it
   travels with the repo and enters git.
 
-Full protocol with worked examples: [docs/pack-protocol.md](docs/pack-protocol.md).
-
 ## Authoring packs: `polyrig-pack-author`
 
 `/polyrig` only **consumes** packs. `polyrig-pack-author` is the sibling skill
@@ -114,8 +111,6 @@ stable `[Evidence: E001]`-style id in `references/sources.md`. Before
 reporting a pack `ready`, it runs `scripts/validate-pack.mjs` in an
 independent context plus two fixed reviewer passes (protocol/structure,
 content/safety) — never a self-review in the authoring context.
-
-Full walkthrough with a worked example: [docs/authoring-packs.md](docs/authoring-packs.md).
 
 ## Install
 
@@ -149,29 +144,87 @@ platforms: Claude Code and Codex get native skill links (or copies, with
 To install one target only, add
 `--platform claude-code|codex|cursor|gemini-cli|opencode` to either command.
 
-## v0.1 scope — golden path
+## Registry: sharing packs
+
+Packs are shared through the PolyRig registry at
+**[polyrig.dev](https://polyrig.dev)**. It closes the loop the skills open:
+`polyrig-pack-author` **creates** a pack, the registry **publishes** it, and
+`polyrig-pack-install` **installs** it for `/polyrig` to consume. The registry
+is a separate application (FastAPI + Next.js) that only serves metadata and
+artifacts — the install/update client ships with PolyRig itself, and it never
+trusts anything it can't re-verify.
+
+**Publish** (in the browser, no CLI): sign in with GitHub → confirm your locked
+`publisher_slug` → upload the pack root (`pack.yaml`, `knowledge/`,
+`references/`, `verify.md`) at `/dashboard/upload` → the server re-validates
+with the **pinned** validator and re-packs a canonical, sha256-frozen
+`.tar.gz` → submit the draft for review → a reviewer approves publish
+eligibility → you get an immutable canonical version URL to share:
+
+```text
+https://polyrig.dev/packs/<type>/<name>/versions/<version>
+```
+
+**Install** (paste that URL, let the skill drive):
+
+```sh
+export POLYRIG_REGISTRY_URL=https://polyrig.dev
+node "$POLYRIG_ROOT/scripts/install-pack.mjs" install \
+  https://polyrig.dev/packs/domain/stripe-billing/versions/0.1.0 --yes
+```
+
+The installer verifies sha256, unpacks safely, re-runs `validate-pack` locally,
+installs to `~/.polyrig/packs/<type>/<name>/`, and pulls publish-time-frozen
+dependencies. `update <type>/<name>` or `update --all` upgrade explicitly —
+there is no background auto-update. Published versions are immutable;
+`deprecated` warns on download and `removed` blocks new downloads.
+
+## What's new in v0.2
+
+v0.1 proved the core loop — a zero-context session carrying a feature to
+verified. v0.2 turns that into something installable and shareable:
+
+- **One-command install.** Published to npm; `npx polyrig install` stages the
+  runtime and links the skills — no clone, no build step. (See [Install](#install).)
+- **Pack authoring.** The `polyrig-pack-author` skill creates and maintains
+  packs against the schema, with Evidence Matrix enforcement and a two-pass
+  review gate. (See [Authoring packs](#authoring-packs-polyrig-pack-author).)
+- **Registry loop.** `polyrig-pack-install` plus [polyrig.dev](https://polyrig.dev)
+  close the share loop: publish in the browser, install from a canonical URL,
+  update explicitly. (See [Registry](#registry-sharing-packs).)
+- **Two new built-in packs.** `stack/nextjs` (App Router frontend conventions)
+  and `domain/auth-github` (GitHub sign-in) — bringing the built-in set to seven.
+
+## Built-in packs
 
 Depth over breadth: focused built-in packs, one end-to-end demo.
 
 - `stack/android`
 - `stack/ios`
 - `stack/backend-fastapi`
+- `stack/nextjs` — App Router frontend: server/client boundaries, data
+  fetching/caching, session consumption, mutations via server actions/route
+  handlers *(new in v0.2)*
 - `domain/auth-core` — shared OAuth/OIDC architecture, token/session handling,
   CSRF/nonce/state, secure storage principles
 - `domain/auth-google` — requires auth-core; per-stack notes for android +
   backend-fastapi
+- `domain/auth-github` — requires auth-core; GitHub OAuth authorization-code
+  flow; per-stack notes for backend-fastapi + nextjs *(new in v0.2)*
 
-Secondary gates: `scripts/validate-pack.mjs` passes on all builtin packs, and
-generated artifacts validate against `schemas/` (checked by
-`scripts/validate-artifacts.mjs`).
+The v0.1 golden path (Android + FastAPI + Google Sign-In) remains the
+end-to-end acceptance demo. Secondary gates: `scripts/validate-pack.mjs` passes
+on all builtin packs, and generated artifacts validate against `schemas/`
+(checked by `scripts/validate-artifacts.mjs`).
 
 ## Non-goals
 
 - Generating business code skeletons.
 - Competing with create-next-app / Nx / projen style scaffolders.
 - A real TUI — interaction is a conversational interview.
-- Remote pack distribution and pack upgrade tooling (deferred; the manifest already
-  records everything an upgrade command will need).
+- A publish CLI — uploading and submitting packs for review happens in the
+  browser on [polyrig.dev](https://polyrig.dev); only install/update are
+  local commands.
 
 ## License
 

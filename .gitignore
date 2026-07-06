@@ -20,3 +20,6 @@ scratch/
 
 # Local agent settings
 .claude/settings.local.json
+
+# Internal docs — not tracked in git
+docs/

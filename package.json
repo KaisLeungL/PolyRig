@@ -21,8 +21,6 @@
     "packs/",
     "schemas/",
     "skill/",
-    "docs/",
-    "!docs/plans/",
     "SPEC.md",
     "README.md",
     "README.zh-CN.md",

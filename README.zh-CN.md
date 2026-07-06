@@ -37,7 +37,7 @@ v0.1 的验收就是一条端到端叙事：
 
 ## 三层架构
 
-三层绝不能糊成一个"大 prompt 仓库"（详见 [docs/architecture.md](docs/architecture.md)）：
+三层绝不能糊成一个"大 prompt 仓库"：
 
 | 层 | 绑定 | 内容 |
 |---|---|---|
@@ -72,8 +72,6 @@ v1 的执行入口是一组 PolyRig skills：`/polyrig` 初始化目标项目，
   覆盖规则，并配有显式信任模型（项目级包的脚本默认永不执行）。
 - 选中的包知识会被**物理拷贝**进目标项目，随仓库一起走、一起进 git。
 
-完整协议与完整示例：[docs/pack-protocol.md](docs/pack-protocol.md)。
-
 ## 编写 pack：`polyrig-pack-author`
 
 `/polyrig` 只**消费** pack。`polyrig-pack-author` 是它的姐妹 skill，负责**创建和
@@ -96,8 +94,6 @@ v1 的执行入口是一组 PolyRig skills：`/polyrig` 初始化目标项目，
 `[Evidence: E001]` 风格 id。在把 pack 报告为 `ready` 之前，它会在独立上下文里跑
 `scripts/validate-pack.mjs`，再跑两个固定的 reviewer（protocol/structure、
 content/safety）——绝不在编写上下文里自我审查。
-
-完整流程与实操示例：[docs/authoring-packs.md](docs/authoring-packs.md)。
 
 ## 安装
 
@@ -128,27 +124,78 @@ node scripts/link-skill.mjs
 pointer/context 文件。只安装单个平台，在以上任一条命令后加
 `--platform claude-code|codex|cursor|gemini-cli|opencode`。
 
-## v0.1 范围 —— 黄金路径
+## Registry：分享 packs
+
+Packs 通过 PolyRig registry —— **[polyrig.dev](https://polyrig.dev)** —— 分享。
+它闭合了三个 skill 打开的循环：`polyrig-pack-author` **创建** pack，registry
+**发布** pack，`polyrig-pack-install` **安装** pack 供 `/polyrig` 消费。registry
+是一个独立应用（FastAPI + Next.js），只负责提供 metadata 和 artifact —— 本地的
+安装/更新客户端随 PolyRig 一起分发，并且绝不信任任何它无法重新验证的东西。
+
+**发布**（在浏览器里完成，没有 CLI）：GitHub 登录 → 确认锁定的 `publisher_slug`
+→ 在 `/dashboard/upload` 上传 pack root（`pack.yaml`、`knowledge/`、
+`references/`、`verify.md`）→ 服务器用**固定版本** validator 重新校验并重新打包成
+canonical、sha256 冻结的 `.tar.gz` → 提交草稿进入审核 → reviewer 审核发布资格通过
+→ 得到一个不可变的 canonical 版本 URL 用于分享：
+
+```text
+https://polyrig.dev/packs/<type>/<name>/versions/<version>
+```
+
+**安装**（粘贴该 URL，让 skill 驱动）：
+
+```sh
+export POLYRIG_REGISTRY_URL=https://polyrig.dev
+node "$POLYRIG_ROOT/scripts/install-pack.mjs" install \
+  https://polyrig.dev/packs/domain/stripe-billing/versions/0.1.0 --yes
+```
+
+安装器会校验 sha256、安全解包、在本地重跑 `validate-pack`、安装到
+`~/.polyrig/packs/<type>/<name>/`，并按发布时冻结的依赖一并安装。`update
+<type>/<name>` 或 `update --all` 显式升级 —— 没有后台自动更新。已发布版本不可变；
+`deprecated` 下载时警告，`removed` 禁止新下载。
+
+## v0.2 新增
+
+v0.1 验证了核心循环——一个零上下文会话把功能做到 verified。v0.2 把它变成可安装、
+可分享的东西：
+
+- **一条命令安装。** 已发布到 npm；`npx polyrig install` 暂存运行时并链接 skill——
+  无需 clone、无需构建步骤。（见「安装」小节。）
+- **pack 编写。** `polyrig-pack-author` skill 按 schema 创建和维护 pack，强制
+  Evidence Matrix,并有两遍 reviewer 审核门槛。（见「编写 pack」小节。）
+- **Registry 闭环。** `polyrig-pack-install` 加上 [polyrig.dev](https://polyrig.dev)
+  闭合分享循环：在浏览器发布、从 canonical URL 安装、显式更新。（见「Registry」小节。）
+- **两个新内置 pack。** `stack/nextjs`（App Router 前端约定）和
+  `domain/auth-github`（GitHub 登录）——内置包增至七个。
+
+## 内置 packs
 
 深度优先于广度：聚焦的一组内置包，一个端到端演示。
 
 - `stack/android`
 - `stack/ios`
 - `stack/backend-fastapi`
+- `stack/nextjs` —— App Router 前端：server/client 边界、数据获取/缓存、
+  session 消费、通过 server action / route handler 做 mutation *(v0.2 新增)*
 - `domain/auth-core` —— 共享的 OAuth/OIDC 架构、token/会话处理、
   CSRF/nonce/state、安全存储原则
 - `domain/auth-google` —— 依赖 auth-core；提供 android + backend-fastapi 的
   per-stack 笔记
+- `domain/auth-github` —— 依赖 auth-core；GitHub OAuth authorization-code 流；
+  提供 backend-fastapi + nextjs 的 per-stack 笔记 *(v0.2 新增)*
 
-次级验收门槛：`scripts/validate-pack.mjs` 在所有内置包上通过；生成的产物能通过
-`schemas/` 校验（由 `scripts/validate-artifacts.mjs` 检查）。
+v0.1 的黄金路径（Android + FastAPI + Google Sign-In）仍是端到端验收演示。次级验收
+门槛：`scripts/validate-pack.mjs` 在所有内置包上通过；生成的产物能通过 `schemas/`
+校验（由 `scripts/validate-artifacts.mjs` 检查）。
 
 ## 非目标
 
 - 生成业务代码骨架。
 - 与 create-next-app / Nx / projen 这类脚手架竞争。
 - 真实 TUI —— 交互形式是对话式访谈。
-- 远程包分发与包升级工具（推迟；manifest 已经记录了升级命令所需的一切）。
+- 发布 CLI —— 上传 pack 和提交审核都在 [polyrig.dev](https://polyrig.dev) 的浏览器里
+  完成；本地命令只有安装/更新。
 
 ## 许可证
 
