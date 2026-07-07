@@ -31,6 +31,16 @@ export function loadPackSchema() {
   }
 }
 
+/** Load and parse schemas/group.schema.json. */
+export function loadGroupSchema() {
+  const path = join(REPO_ROOT, 'schemas', 'group.schema.json');
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch (err) {
+    throw new Error(`cannot load group schema at ${path}: ${err.message}`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Schema-driven checks (subset validator)
 // ---------------------------------------------------------------------------
@@ -177,6 +187,23 @@ export function listPackDirs(root) {
 /** True if pack id (e.g. 'domain/auth-core') resolves in any discovery root. */
 export function idResolvesInRoots(id, roots) {
   return roots.some((root) => isFile(join(root, id, 'pack.yaml')));
+}
+
+/**
+ * List candidate group directories inside a discovery root
+ * (<root>/groups/<name>). Returns [] for a missing root or missing groups/.
+ * Each entry: { dir, name, hasGroupYaml }.
+ */
+export function listGroupDirs(root) {
+  const out = [];
+  const groupsRoot = join(root, 'groups');
+  if (!isDir(groupsRoot)) return out;
+  for (const entry of readdirSync(groupsRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const dir = join(groupsRoot, entry.name);
+    out.push({ dir, name: entry.name, hasGroupYaml: isFile(join(dir, 'group.yaml')) });
+  }
+  return out;
 }
 
 /** Recursively collect .md files under a directory. */
@@ -574,4 +601,221 @@ export function validatePackDir(packDir, { roots = [join(REPO_ROOT, 'packs')] } 
   }
 
   return { ok: violations.length === 0, violations, meta };
+}
+
+// ---------------------------------------------------------------------------
+// Topological sort (shared by group validation and install ordering)
+// ---------------------------------------------------------------------------
+
+/**
+ * Kahn topological sort over a set of `nodes` and directed `edges`.
+ *
+ * An edge `[a, b]` means "a is a prerequisite of b" — a must appear BEFORE b in
+ * the returned order (i.e. dependency-first ordering, exactly what install
+ * closures want: install a before b when b depends on a). Ties are broken by
+ * lexicographic node id so the order is deterministic.
+ *
+ * Pure function. Returns `{ order, cycle }`:
+ *   - `order`: array of node ids in dependency-first order (complete iff acyclic).
+ *   - `cycle`: null when acyclic, otherwise the sorted list of node ids that
+ *     could not be ordered (the nodes involved in / downstream of a cycle).
+ * Edges referencing nodes not present in `nodes` are ignored.
+ */
+export function topoSort(nodes, edges) {
+  const nodeSet = new Set(nodes);
+  const indegree = new Map([...nodeSet].map((n) => [n, 0]));
+  const outgoing = new Map([...nodeSet].map((n) => [n, []]));
+  for (const [a, b] of edges) {
+    if (!nodeSet.has(a) || !nodeSet.has(b) || a === b) continue;
+    outgoing.get(a).push(b);
+    indegree.set(b, indegree.get(b) + 1);
+  }
+  const ready = [...nodeSet].filter((n) => indegree.get(n) === 0).sort();
+  const order = [];
+  while (ready.length > 0) {
+    const n = ready.shift();
+    order.push(n);
+    let pushed = false;
+    for (const m of outgoing.get(n)) {
+      indegree.set(m, indegree.get(m) - 1);
+      if (indegree.get(m) === 0) { ready.push(m); pushed = true; }
+    }
+    if (pushed) ready.sort();
+  }
+  if (order.length !== nodeSet.size) {
+    const cycle = [...nodeSet].filter((n) => !order.includes(n)).sort();
+    return { order, cycle };
+  }
+  return { order, cycle: null };
+}
+
+// ---------------------------------------------------------------------------
+// Group validation
+// ---------------------------------------------------------------------------
+
+const GROUP_REF_ID_RE = /^(stack|domain)\/[a-z0-9-]+$/;
+
+/** Resolve a pack id to its parsed pack.yaml across roots. Returns null when
+ * it does not resolve or cannot be parsed as a mapping. */
+function readPackYamlFromRoots(id, roots) {
+  for (const root of roots) {
+    const p = join(root, id, 'pack.yaml');
+    if (!isFile(p)) continue;
+    try {
+      const parsed = parseYamlFile(p);
+      return typeName(parsed) === 'object' ? { path: p, meta: parsed } : { path: p, meta: null };
+    } catch {
+      return { path: p, meta: null };
+    }
+  }
+  return null;
+}
+
+/**
+ * Validate one group.yaml file. Options:
+ *   roots — discovery roots used to resolve member and requires pack ids.
+ * Returns { ok, violations, meta } where meta is the parsed group.yaml (or null
+ * when it could not be parsed). Enforces the 6 group invariants from
+ * docs/plans/2026-07-06-polyrig-pack-group-spec.md. The logic is intentionally
+ * self-contained so the registry can vendor it for joint validation.
+ */
+export function validateGroupFile(groupYamlPath, { roots = [join(REPO_ROOT, 'packs')] } = {}) {
+  const violations = [];
+  const path = resolve(groupYamlPath);
+  const effectiveRoots = roots.map((r) => resolve(r));
+
+  if (!isFile(path)) {
+    return { ok: false, violations: [`${path}: group.yaml does not exist`], meta: null };
+  }
+
+  let meta = null;
+  try {
+    meta = parseYamlFile(path);
+  } catch (err) {
+    if (err instanceof YamlError) {
+      return { ok: false, violations: [`group.yaml: YAML parse error — ${err.message}`], meta: null };
+    }
+    throw err;
+  }
+  if (typeName(meta) !== 'object') {
+    return { ok: false, violations: [`group.yaml: expected a mapping at top level, got ${typeName(meta)}`], meta: null };
+  }
+
+  // --- schema shape (covers id/version/last_reviewed/summary/members shape) --
+  const schema = loadGroupSchema();
+  violations.push(...checkAgainstSchema(meta, schema, '').map((v) => `group.yaml:${v}`));
+
+  // --- directory naming must agree with id -----------------------------------
+  if (typeof meta.id === 'string' && /^group\/[a-z0-9-]+$/.test(meta.id)) {
+    const name = meta.id.split('/')[1];
+    if (basename(dirname(path)) !== name) {
+      violations.push(`structure: directory name '${basename(dirname(path))}' does not match id short-name '${name}' (id: ${meta.id})`);
+    }
+  }
+
+  // Defensive extraction: only well-formed refs feed the invariant checks;
+  // malformed shapes are already reported by the schema pass above.
+  const asRefs = (arr) => (Array.isArray(arr) ? arr : [])
+    .filter((r) => typeName(r) === 'object' && typeof r.id === 'string');
+  const members = asRefs(meta.members);
+  const requires = asRefs(meta.requires);
+  const memberIds = members.map((r) => r.id);
+  const requireIds = requires.map((r) => r.id);
+  const memberIdSet = new Set(memberIds);
+  const requireIdSet = new Set(requireIds);
+
+  // --- invariant 3: no duplicate member ids ----------------------------------
+  const seenMember = new Set();
+  for (const id of memberIds) {
+    if (seenMember.has(id)) violations.push(`members: duplicate member id '${id}'`);
+    seenMember.add(id);
+  }
+  const seenRequire = new Set();
+  for (const id of requireIds) {
+    if (seenRequire.has(id)) violations.push(`requires: duplicate requires id '${id}'`);
+    seenRequire.add(id);
+  }
+
+  // --- invariant 4: members and group-level requires are disjoint ------------
+  for (const id of requireIds) {
+    if (memberIdSet.has(id)) {
+      violations.push(`requires: '${id}' appears in both members and requires (a pack is either a member or an external dependency, not both)`);
+    }
+  }
+
+  // --- invariant 2: every reference resolves and its version matches ---------
+  // Cache parsed pack.yaml per id (used again by closure/conflict/cycle checks).
+  const resolved = new Map(); // id -> { path, meta } | null
+  const refFor = (id) => {
+    if (!resolved.has(id)) resolved.set(id, readPackYamlFromRoots(id, effectiveRoots));
+    return resolved.get(id);
+  };
+  const checkRefResolves = (ref, label) => {
+    if (!GROUP_REF_ID_RE.test(ref.id)) return; // schema flags the bad id shape
+    const found = refFor(ref.id);
+    if (found === null) {
+      violations.push(`${label}: '${ref.id}' does not resolve in any discovery root (${effectiveRoots.join(', ')})`);
+      return;
+    }
+    if (found.meta === null) {
+      violations.push(`${label}: '${ref.id}' pack.yaml at ${found.path} could not be parsed as a mapping`);
+      return;
+    }
+    if (typeof ref.version === 'string' && found.meta.version !== ref.version) {
+      violations.push(`${label}: '${ref.id}' version mismatch — group pins ${ref.version} but pack.yaml is ${found.meta.version}`);
+    }
+  };
+  for (const ref of members) checkRefResolves(ref, 'members');
+  for (const ref of requires) checkRefResolves(ref, 'requires');
+
+  // --- invariant 1: dependency closure (one level) --------------------------
+  for (const ref of members) {
+    const found = refFor(ref.id);
+    if (!found || found.meta === null) continue;
+    const reqs = Array.isArray(found.meta.requires) ? found.meta.requires : [];
+    for (const dep of reqs) {
+      if (typeof dep !== 'string' || !GROUP_REF_ID_RE.test(dep)) continue;
+      if (!memberIdSet.has(dep) && !requireIdSet.has(dep)) {
+        violations.push(`closure: member '${ref.id}' requires '${dep}', which is neither a group member nor a group-level requires`);
+      }
+    }
+  }
+
+  // --- invariant 5: members must not conflict with sibling members ----------
+  for (const ref of members) {
+    const found = refFor(ref.id);
+    if (!found || found.meta === null) continue;
+    const conflicts = Array.isArray(found.meta.conflicts) ? found.meta.conflicts : [];
+    for (const c of conflicts) {
+      if (typeof c !== 'string') continue;
+      if (c !== ref.id && memberIdSet.has(c)) {
+        violations.push(`conflict: member '${ref.id}' declares conflicts with sibling member '${c}'`);
+      }
+    }
+  }
+
+  // --- invariant 6: the requires graph over (members + requires) is acyclic --
+  const nodes = [...new Set([...memberIds, ...requireIds])];
+  const nodeSet = new Set(nodes);
+  const edges = [];
+  for (const id of nodes) {
+    const found = refFor(id);
+    if (!found || found.meta === null) continue;
+    const reqs = Array.isArray(found.meta.requires) ? found.meta.requires : [];
+    for (const dep of reqs) {
+      if (typeof dep !== 'string' || !nodeSet.has(dep)) continue;
+      edges.push([dep, id]); // dep is a prerequisite of id
+    }
+  }
+  const { order, cycle } = topoSort(nodes, edges);
+  if (cycle) {
+    violations.push(`cycle: requires graph is not acyclic; nodes involved in a cycle: ${cycle.join(', ')}`);
+  }
+
+  return {
+    ok: violations.length === 0,
+    violations,
+    meta,
+    topoOrder: cycle ? null : order,
+  };
 }

@@ -80,20 +80,41 @@ proceed with domain packs only or stop.
 
 Record: selected stack pack ids and the user's rationale.
 
-### P3 — Domain packs
+### P3 — Domain packs and group suites
 
-From the same index, present only **domain** packs **compatible** with the chosen
-stacks: a domain pack is compatible if its `stacks` list intersects the chosen
-stack short-names **or is empty** (empty = stack-agnostic). Ask which apply
-(recommend those matching the stated purpose; default: none).
+From the same index, present two kinds of option side by side:
 
-Then resolve dependencies from each selected pack's metadata:
+1. **Single domain packs** — present only those **compatible** with the chosen
+   stacks: a domain pack is compatible if its `stacks` list intersects the chosen
+   stack short-names **or is empty** (empty = stack-agnostic).
+2. **Group suites** — from the index's `groups[]` array, present each **compatible**
+   group as a curated "suite" option alongside the single packs. A group is
+   compatible if **any** of its member domain packs is compatible with the chosen
+   stacks (same intersection-or-empty rule). Show the group id, summary, version,
+   source, and its member composition (e.g. "group/auth — domain/auth-core,
+   domain/auth-google, domain/auth-github"), so the user sees a suite is one
+   choice that pulls several packs.
+
+Ask which apply (recommend those matching the stated purpose; default: none).
+Single packs and suites may be mixed.
+
+**Selecting a group suite** pulls in **all** its members. Resolve them in
+**dependency-first / topological order** (a member's `requires` come before it —
+e.g. `domain/auth-core` before `domain/auth-google`), and **tell the user** the
+full member composition being added and why (e.g. "group/auth selected — adds
+domain/auth-core, domain/auth-google, domain/auth-github"). Record the group
+selection separately (see P7) in addition to its members.
+
+Then resolve dependencies from each selected pack's metadata (both from single
+picks and from group members):
 - `requires`: auto-include the required packs and **tell the user** each one added
-  and why (e.g. "domain/auth-google requires domain/auth-core — added").
+  and why (e.g. "domain/auth-google requires domain/auth-core — added"). A member
+  whose `requires` are satisfied by group siblings needs no extra addition.
 - `conflicts`: if two selected packs conflict, **block** the combination, explain
   which pair conflicts, and ask the user to drop one.
 
-Record: final domain pack set, including transitive additions marked "required by <pack>".
+Record: the selected group suite(s) with their member composition, plus the final
+domain pack set, including transitive additions marked "required by <pack>".
 
 ### P4 — Constraints
 
@@ -118,6 +139,14 @@ must exercise behavior (build, tests against running code, server boot) — not
 restate documentation. A contract- or doc-only feature whose test merely
 re-asserts its own content proves nothing; fold contract definition into the
 feature that implements it instead.
+
+When acceptance criteria name concrete artifacts a selected pack has a **strong
+convention** about (route paths, error-envelope shape, storage location, naming),
+write them consistent with that convention so the implementer is not forced to
+reconcile a conflict. Example: if the backend pack mandates an `/api/v1` prefix,
+write the criterion as `POST /api/v1/auth/google`, not `POST /auth/google`.
+Prefer routing the detail to the pack ("the sign-in endpoint per
+`docs/stacks/<id>/`") over hard-coding a value the pack will contradict.
 
 If the feature spans multiple stacks or is too large for one pass, decompose it
 into 2–4 features with `depends_on` ordering and confirm the split. Each feature
@@ -216,6 +245,16 @@ find docs/<stacks|domains>/<short-id> -type f | LC_ALL=C sort | xargs shasum -a 
 
 Record it as `"sha256:<that 64-hex digest>"`.
 
+If the user selected any **group suite** in P3, also write `selected_groups[]`:
+one entry per selected group, `{ "id": "group/<name>", "version": "<group
+version from the index>", "lock": [ {"id": "<member/dep id>", "version": "<pinned
+version>"}, … ] }`. The `lock` is the exact version snapshot of the group's
+members and external `requires` — take it straight from the group's index entry
+(`members` + `requires`), in dependency-first order. The members still appear
+individually in `selected_packs[]` (unchanged); `selected_groups[]` records that
+they arrived as a group so a future upgrade can treat them as a unit. Packs the
+user picked singly (not via a group) do **not** appear in `selected_groups[]`.
+
 **e. Report and hand off.** List: every file written, every override announced,
 every staleness warning, every unverified dependency. Then instruct the user:
 
@@ -242,6 +281,8 @@ node "$POLYRIG_ROOT/scripts/validate-artifacts.mjs" <target>
 ```
 
 It checks `feature_list.json` and `.polyrig/manifest.json` against
-`$POLYRIG_ROOT/schemas/`. Fix any violation before reporting success. If the
-script is unavailable (POLYRIG_ROOT could not be resolved), fall back to
-re-reading both files against the schemas' required fields by hand.
+`$POLYRIG_ROOT/schemas/` — including any `selected_groups[]` you wrote (the
+manifest schema already covers the `id`/`version`/`lock` shape). Fix any
+violation before reporting success. If the script is unavailable (POLYRIG_ROOT
+could not be resolved), fall back to re-reading both files against the schemas'
+required fields by hand.

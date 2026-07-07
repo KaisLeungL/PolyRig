@@ -179,6 +179,15 @@ dependencies. `update <type>/<name>` or `update --all` upgrade explicitly —
 there is no background auto-update. Published versions are immutable;
 `deprecated` warns on download and `removed` blocks new downloads.
 
+**Pack groups.** Related packs (e.g. a shared `auth-core` plus provider packs)
+can be bundled into a versioned, reference-style **group** — one install-and-
+publish unit that pins each member by exact version while the packs stay atomic.
+A group has its own canonical URL (`/groups/<name>/versions/<version>`); pasting
+it installs the whole suite in dependency order, and pasting a member URL
+soft-guides toward the group while still allowing a single-pack install. See the
+[pack group spec](docs/plans/2026-07-06-polyrig-pack-group-spec.md) and
+[pack protocol](docs/pack-protocol.md#pack-groups) for details.
+
 ## What's new in v0.2
 
 v0.1 proved the core loop — a zero-context session carrying a feature to
@@ -211,6 +220,10 @@ Depth over breadth: focused built-in packs, one end-to-end demo.
   backend-fastapi
 - `domain/auth-github` — requires auth-core; GitHub OAuth authorization-code
   flow; per-stack notes for backend-fastapi + nextjs *(new in v0.2)*
+
+The three auth packs are also bundled as the built-in **`group/auth`** suite
+(`groups/auth/group.yaml`) — install the whole sign-in stack in one step, or a
+single member on its own. See [Pack groups](#registry-sharing-packs).
 
 The v0.1 golden path (Android + FastAPI + Google Sign-In) remains the
 end-to-end acceptance demo. Secondary gates: `scripts/validate-pack.mjs` passes

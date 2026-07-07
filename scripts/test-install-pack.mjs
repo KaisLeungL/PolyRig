@@ -79,19 +79,24 @@ function fixtureFiles(id, version, requires) {
 
 // --- fake registry --------------------------------------------------------
 
-const packs = new Map(); // "type/name/version" -> {status, artifact, sha256, requires:[], notes, orgSlug}
+const packs = new Map(); // "type/name/version" -> {status, artifact, sha256, requires:[], notes, orgSlug, groups}
+const groups = new Map(); // "name/version" -> {id, version, status, members, requires, notes}
 let nextArtifact = 1;
 const PRIVATE_TOKEN = 'test-token';
 
-function addPack(id, version, { status = 'published', requires = [], reqYaml = '[]', notes = 'test release', corruptSha = false, orgSlug = null } = {}) {
+function addPack(id, version, { status = 'published', requires = [], reqYaml = '[]', notes = 'test release', corruptSha = false, orgSlug = null, memberOf = [] } = {}) {
   const artifact = makeTarGz(fixtureFiles(id, version, reqYaml));
   const sha = createHash('sha256').update(artifact).digest('hex');
   packs.set(`${orgSlug ? `orgs/${orgSlug}/` : ''}${id}/${version}`, {
     id, version, status, artifact, orgSlug,
     sha256: `sha256:${corruptSha ? '0'.repeat(64) : sha}`,
     artifactId: `art_${nextArtifact++}`,
-    requires, notes,
+    requires, notes, groups: memberOf,
   });
+}
+
+function addGroup(name, version, { status = 'published', members = [], requires = [], notes = 'group release' } = {}) {
+  groups.set(`${name}/${version}`, { id: `group/${name}`, name, version, status, members, requires, notes });
 }
 
 addPack('domain/hello-registry', '0.1.0');
@@ -106,6 +111,29 @@ addPack('domain/gone-pack', '0.1.0', { status: 'removed' });
 addPack('domain/corrupt-pack', '0.1.0', { corruptSha: true });
 // Private, org-scoped pack: only reachable with the org's bearer token.
 addPack('domain/private-pack', '0.1.0', { orgSlug: 'acme', notes: 'private release' });
+
+// --- pack group fixture: the auth trio (core is depended on by the providers) ---
+const authMembership = [{ id: 'group/auth', version: '0.1.0' }];
+addPack('domain/auth-core', '0.1.0', { memberOf: authMembership });
+addPack('domain/auth-google', '0.1.0', {
+  requires: [{ id: 'domain/auth-core', version: '0.1.0' }],
+  reqYaml: '[domain/auth-core]',
+  memberOf: authMembership,
+});
+addPack('domain/auth-github', '0.1.0', {
+  requires: [{ id: 'domain/auth-core', version: '0.1.0' }],
+  reqYaml: '[domain/auth-core]',
+  memberOf: authMembership,
+});
+addGroup('auth', '0.1.0', {
+  members: [
+    { id: 'domain/auth-core', version: '0.1.0' },
+    { id: 'domain/auth-google', version: '0.1.0' },
+    { id: 'domain/auth-github', version: '0.1.0' },
+  ],
+  requires: [],
+  notes: 'OAuth/OIDC sign-in suite.',
+});
 
 let origin = '';
 
@@ -136,7 +164,21 @@ function metadataFor(entry) {
     has_scripts: false,
     release_notes: entry.notes,
     resolved_requires: entry.requires,
+    groups: entry.groups ?? [],
     ...(entry.status === 'deprecated' ? { warning: 'deprecated' } : {}),
+  };
+}
+
+function groupMetadataFor(g) {
+  return {
+    status: g.status,
+    id: g.id,
+    version: g.version,
+    canonical_url: `${origin}/groups/${g.name}/versions/${g.version}`,
+    publisher_slug: 'tester',
+    release_notes: g.notes,
+    members: g.members,
+    requires: g.requires,
   };
 }
 
@@ -174,6 +216,13 @@ const server = http.createServer((req, res) => {
     if (!entry) { res.writeHead(404); return res.end('{}'); }
     res.writeHead(200, { 'content-type': 'application/json' });
     return res.end(JSON.stringify(metadataFor(entry)));
+  }
+  m = url.pathname.match(/^\/api\/groups\/([a-z0-9-]+)\/versions\/([^/]+)\/install-metadata$/);
+  if (m) {
+    const g = groups.get(`${m[1]}/${m[2]}`);
+    if (!g) { res.writeHead(404); return res.end('{}'); }
+    res.writeHead(200, { 'content-type': 'application/json' });
+    return res.end(JSON.stringify(groupMetadataFor(g)));
   }
   m = url.pathname.match(/^\/api\/packs\/(stack|domain)\/([a-z0-9-]+)\/updates$/);
   if (m) {
@@ -241,6 +290,10 @@ function canonical(id, version) {
 
 function privateCanonical(orgSlug, id, version) {
   return `${origin}/orgs/${orgSlug}/packs/${id}/versions/${version}`;
+}
+
+function groupCanonical(name, version) {
+  return `${origin}/groups/${name}/versions/${version}`;
 }
 
 await new Promise((resolveReady) => server.listen(0, '127.0.0.1', resolveReady));
@@ -352,6 +405,71 @@ try {
   const pubDest = join(work, 'packs-public');
   r = await run(['install', canonical('domain/hello-registry', '0.1.0'), '--dest', pubDest, '--yes']);
   check('public install still works without token', r.status === 0 && existsSync(join(pubDest, 'domain/hello-registry/pack.yaml')), r.stdout + r.stderr);
+
+  // --- pack group cases ----------------------------------------------------
+
+  // 17. whole-group install: all members, dependency-first order.
+  const gDest = join(work, 'packs-group');
+  r = await run(['install', groupCanonical('auth', '0.1.0'), '--dest', gDest, '--yes']);
+  check('group install exits 0', r.status === 0, r.stdout + r.stderr);
+  check('group member auth-core installed', existsSync(join(gDest, 'domain/auth-core/pack.yaml')), r.stdout + r.stderr);
+  check('group member auth-google installed', existsSync(join(gDest, 'domain/auth-google/pack.yaml')));
+  check('group member auth-github installed', existsSync(join(gDest, 'domain/auth-github/pack.yaml')));
+  const coreIdx = r.stdout.indexOf('OK installed domain/auth-core');
+  const googleIdx = r.stdout.indexOf('OK installed domain/auth-google');
+  const githubIdx = r.stdout.indexOf('OK installed domain/auth-github');
+  check('auth-core installed before its dependants (topo order)',
+    coreIdx !== -1 && googleIdx !== -1 && githubIdx !== -1 && coreIdx < googleIdx && coreIdx < githubIdx, r.stdout);
+  check('group plan lists the group id/version', r.stdout.includes('PLAN group group/auth@0.1.0'), r.stdout);
+
+  // 18. each member has an install record, and a group install record is written.
+  check('member auth-core has .polyrig-install.json', existsSync(join(gDest, 'domain/auth-core/.polyrig-install.json')));
+  const groupRecPath = join(gDest, '.polyrig-groups/auth.json');
+  check('group install record written', existsSync(groupRecPath), groupRecPath);
+  if (existsSync(groupRecPath)) {
+    const grec = JSON.parse(readFileSync(groupRecPath, 'utf8'));
+    check('group record fields', grec.group_id === 'group/auth'
+      && grec.version === '0.1.0'
+      && grec.source === 'remote'
+      && Array.isArray(grec.members) && grec.members.length === 3
+      && Array.isArray(grec.lock) && grec.lock.length === 3
+      && grec.lock.every((l) => typeof l.id === 'string' && typeof l.version === 'string')
+      && typeof grec.installed_at === 'string', JSON.stringify(grec));
+    // lock must be in dependency-first order: auth-core first.
+    check('group lock is dependency-first', grec.lock[0].id === 'domain/auth-core', JSON.stringify(grec.lock));
+  }
+
+  // 19. group install is idempotent: re-running is all NOOP.
+  r = await run(['install', groupCanonical('auth', '0.1.0'), '--dest', gDest, '--yes']);
+  check('group reinstall re-runs cleanly', r.status === 0, r.stdout + r.stderr);
+  check('group reinstall members are no-ops', !r.stdout.includes('OK installed domain/auth-'), r.stdout);
+
+  // 20. requesting a member pack URL soft-guides to the group (no install).
+  const sgDest = join(work, 'packs-softguide');
+  r = await run(['install', canonical('domain/auth-github', '0.1.0'), '--dest', sgDest, '--yes']);
+  check('member URL soft-guides (blocks, non-zero)', r.status !== 0, r.stdout + r.stderr);
+  check('soft-guide names the group', r.stdout.includes('member of group/auth'), r.stdout);
+  check('soft-guide offers --group and --single', r.stdout.includes('--group') && r.stdout.includes('--single'), r.stdout);
+  check('soft-guide installs nothing', !existsSync(join(sgDest, 'domain/auth-github')), r.stdout);
+
+  // 21. --group on a member URL installs the whole group.
+  const memGroupDest = join(work, 'packs-mem-group');
+  r = await run(['install', canonical('domain/auth-github', '0.1.0'), '--dest', memGroupDest, '--yes', '--group']);
+  check('--group on member URL installs whole group', r.status === 0
+    && existsSync(join(memGroupDest, 'domain/auth-core/pack.yaml'))
+    && existsSync(join(memGroupDest, 'domain/auth-google/pack.yaml'))
+    && existsSync(join(memGroupDest, 'domain/auth-github/pack.yaml')), r.stdout + r.stderr);
+  check('--group writes the group record', existsSync(join(memGroupDest, '.polyrig-groups/auth.json')));
+
+  // 22. --single installs just the pack + requires closure (auth-core), NOT the
+  //     sibling auth-google.
+  const singleDest = join(work, 'packs-single');
+  r = await run(['install', canonical('domain/auth-github', '0.1.0'), '--dest', singleDest, '--yes', '--single']);
+  check('--single exits 0', r.status === 0, r.stdout + r.stderr);
+  check('--single installs the target pack', existsSync(join(singleDest, 'domain/auth-github/pack.yaml')));
+  check('--single pulls the requires closure (auth-core)', existsSync(join(singleDest, 'domain/auth-core/pack.yaml')));
+  check('--single does NOT pull the sibling (auth-google)', !existsSync(join(singleDest, 'domain/auth-google')), r.stdout);
+  check('--single writes no group record', !existsSync(join(singleDest, '.polyrig-groups/auth.json')));
 } finally {
   server.close();
   rmSync(work, { recursive: true, force: true });

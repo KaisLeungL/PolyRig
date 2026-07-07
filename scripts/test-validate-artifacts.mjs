@@ -117,6 +117,38 @@ try {
     assert(result.output.includes('date-time'), `bad-manifest: date-time not flagged\n${result.output}`);
   }
 
+  // A manifest recording a selected group (id/version/lock) validates.
+  {
+    const m = validManifest();
+    m.selected_groups = [
+      {
+        id: 'group/auth',
+        version: '0.1.0',
+        lock: [
+          { id: 'domain/auth-core', version: '0.1.0' },
+          { id: 'domain/auth-google', version: '0.1.0' },
+        ],
+      },
+    ];
+    const result = runValidate(writeTarget(root, 'group-valid', validFeatureList(), m));
+    assert(result.ok, `group-valid: unexpectedly failed\n${result.output}`);
+  }
+
+  // A selected group missing a required sub-field (version) is rejected.
+  {
+    const m = validManifest();
+    m.selected_groups = [
+      {
+        id: 'group/auth',
+        lock: [{ id: 'domain/auth-core', version: '0.1.0' }],
+      },
+    ];
+    const result = runValidate(writeTarget(root, 'group-missing-version', validFeatureList(), m));
+    assert(!result.ok, `group-missing-version: unexpectedly passed\n${result.output}`);
+    assert(result.output.includes('/selected_groups/0'), `group-missing-version: wrong violation\n${result.output}`);
+    assert(result.output.includes("required field 'version'"), `group-missing-version: version not flagged\n${result.output}`);
+  }
+
   // Missing artifact file fails instead of passing silently.
   {
     const dir = join(root, 'missing');

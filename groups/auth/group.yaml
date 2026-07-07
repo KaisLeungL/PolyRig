@@ -1,0 +1,12 @@
+id: group/auth
+version: 0.1.0
+last_reviewed: 2026-07-06
+summary: OAuth/OIDC sign-in suite — shared auth-core plus Google and GitHub providers
+members:
+  - id: domain/auth-core
+    version: 0.1.0
+  - id: domain/auth-google
+    version: 0.1.0
+  - id: domain/auth-github
+    version: 0.1.0
+requires: []

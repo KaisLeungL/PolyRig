@@ -155,6 +155,14 @@ node "$POLYRIG_ROOT/scripts/install-pack.mjs" install \
 <type>/<name>` 或 `update --all` 显式升级 —— 没有后台自动更新。已发布版本不可变；
 `deprecated` 下载时警告，`removed` 禁止新下载。
 
+**Pack group（组）。** 有依赖关系的一组 pack（例如共享的 `auth-core` 加上各家
+provider）可以打包成一个版本化、引用式的 **group** —— 一个整体的安装/发布单位，
+精确锁定每个成员的版本，而成员 pack 仍是原子的。组有自己的 canonical URL
+（`/groups/<name>/versions/<version>`）：粘贴组 URL 会按依赖顺序整组安装；粘贴成员
+URL 则软引导安装整组，同时也允许只单装该 pack。详见
+[pack group 规格](docs/plans/2026-07-06-polyrig-pack-group-spec.md)与
+[包协议](docs/pack-protocol.md#pack-groups)。
+
 ## v0.2 新增
 
 v0.1 验证了核心循环——一个零上下文会话把功能做到 verified。v0.2 把它变成可安装、
@@ -184,6 +192,10 @@ v0.1 验证了核心循环——一个零上下文会话把功能做到 verified
   per-stack 笔记
 - `domain/auth-github` —— 依赖 auth-core；GitHub OAuth authorization-code 流；
   提供 backend-fastapi + nextjs 的 per-stack 笔记 *(v0.2 新增)*
+
+三个 auth pack 同时打包为内置的 **`group/auth`** 套餐（`groups/auth/group.yaml`）
+—— 可以一步装好整套登录能力，也可以只单装其中某个成员。见
+[Pack group](#registry分享-packs)。
 
 v0.1 的黄金路径（Android + FastAPI + Google Sign-In）仍是端到端验收演示。次级验收
 门槛：`scripts/validate-pack.mjs` 在所有内置包上通过；生成的产物能通过 `schemas/`

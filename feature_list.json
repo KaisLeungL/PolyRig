@@ -404,6 +404,60 @@
         "SPEC.md"
       ],
       "notes": "Closes the v0.1 secondary gate 'generated artifacts validate against schemas/', which previously had no tooling behind it. 2026-07-04: verified — test-validate-artifacts passes; manual route executed against the TinyHabit Sync test project: both artifacts PASS."
+    },
+    {
+      "id": "F017",
+      "title": "Pack groups: versioned reference manifest, validation, discovery, install, consume, author",
+      "status": "implemented",
+      "priority": "p0",
+      "depends_on": ["F002", "F003", "F009", "F012", "F016"],
+      "pack_refs": ["domain/auth-core", "domain/auth-google", "domain/auth-github"],
+      "acceptance_criteria": [
+        "schemas/group.schema.json defines groups/<name>/group.yaml (id group/<name>, version, last_reviewed, summary, members[{id,version}] non-empty, optional requires[{id,version}] for out-of-group packs); a group is the install and publish unit while member packs stay atomic",
+        "scripts/validate-group.mjs enforces the six invariants (member requires closure, member existence/version match, unique/valid ids, members-vs-requires disjoint, no member-to-member conflicts, acyclic requires graph) and PASSes groups/auth/group.yaml",
+        "scripts/build-pack-index.mjs emits a groups[] array parallel to packs (id, version, summary, last_reviewed, members, requires, source, path) with project>user>builtin override precedence",
+        "scripts/install-pack.mjs parses /groups/<name>/versions/<version>, installs the whole group in dependency-first topological order, writes a group install record at <dest>/.polyrig-groups/<name>.json plus each member's .polyrig-install.json, and soft-guides a member URL (blocks non-zero forcing --group or --single; --single pulls the requires closure but not group siblings)",
+        "schemas/manifest.schema.json adds selected_groups[] ({id, version, lock:[{id,version}]}); validate-artifacts covers it and /polyrig writes it when a group suite is selected while members still record in selected_packs[]",
+        "skill/polyrig P3 presents compatible group suites alongside single domain packs and resolves group members in dependency-first order; skill/polyrig-pack-author adds a group.yaml authoring subflow (auto-read member pack.yaml versions into the lock, run validate-group) plus a dependency pre-scan that warns 疑似无效引入，请确认 without blocking; skill/polyrig-pack-install documents group URL, soft-guide, group install record, and group update",
+        "package.json test chain includes node scripts/test-validate-group.mjs; docs/pack-protocol.md and both READMEs document the group mechanism"
+      ],
+      "verification": {
+        "manual": [
+          "Read-through: SKILL group flow and authoring contract match the spec; group.yaml examples use block YAML (no flow maps)",
+          "Protocol / structure and content / safety reviews report no blocking issues"
+        ],
+        "automated": [
+          "node scripts/test-validate-group.mjs",
+          "node scripts/validate-group.mjs groups/auth/group.yaml",
+          "node scripts/test-install-pack.mjs",
+          "node scripts/test-build-pack-index.mjs",
+          "node scripts/test-validate-artifacts.mjs",
+          "npm test",
+          "node -e \"JSON.parse(require('fs').readFileSync('feature_list.json','utf8'))\""
+        ]
+      },
+      "files_expected": [
+        "schemas/group.schema.json",
+        "scripts/validate-group.mjs",
+        "scripts/test-validate-group.mjs",
+        "scripts/lib/validate.mjs",
+        "scripts/build-pack-index.mjs",
+        "scripts/install-pack.mjs",
+        "scripts/test-install-pack.mjs",
+        "schemas/manifest.schema.json",
+        "groups/auth/group.yaml",
+        "skill/polyrig/SKILL.md",
+        "skill/polyrig-pack-author/SKILL.md",
+        "skill/polyrig-pack-author/references/pack-authoring-contract.md",
+        "skill/polyrig-pack-install/SKILL.md",
+        "package.json",
+        "docs/pack-protocol.md",
+        "README.md",
+        "README.zh-CN.md",
+        "docs/plans/2026-07-06-polyrig-pack-group-spec.md",
+        "docs/plans/2026-07-06-polyrig-pack-group-implementation.md"
+      ],
+      "notes": "Protocol-side pack group feature (tasks 1-9). Scripts core (tasks 1-5), manifest schema (task 6), and groups/auth migration are green; tasks 7-9 add the /polyrig consume flow (selected_groups), polyrig-pack-author group authoring + dependency pre-scan, polyrig-pack-install group interaction contract, npm test wiring, and user docs. Registry-side joint upload/atomic publish is out of scope here and lands in polyrig-registry per the spec."
     }
   ]
 }

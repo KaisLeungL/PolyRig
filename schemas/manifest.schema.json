@@ -39,6 +39,12 @@
       "items": { "$ref": "#/$defs/selected_pack" },
       "description": "Every pack that was selected and copied into the target project."
     },
+    "selected_groups": {
+      "type": "array",
+      "default": [],
+      "items": { "$ref": "#/$defs/selected_group" },
+      "description": "Every pack group that was selected, recording the group id/version and the exact locked versions of its members and external dependencies. Members are still listed individually in selected_packs; this array lets a future upgrade command recognise packs installed as a group and upgrade them as a unit."
+    },
     "overrides": {
       "type": "array",
       "default": [],
@@ -84,6 +90,45 @@
           "type": "string",
           "pattern": "^sha256:[0-9a-f]{64}$",
           "description": "Content checksum of the pack as copied, 'sha256:<hex>'."
+        }
+      },
+      "additionalProperties": false
+    },
+    "selected_group": {
+      "type": "object",
+      "required": ["id", "version", "lock"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^group/[a-z0-9-]+$",
+          "description": "Group id, e.g. 'group/auth'."
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Group version at selection time (semver string from group.yaml)."
+        },
+        "lock": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/locked_ref" },
+          "description": "Exact version snapshot of the group's members and external dependencies at selection time."
+        }
+      },
+      "additionalProperties": false
+    },
+    "locked_ref": {
+      "type": "object",
+      "required": ["id", "version"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^(stack|domain)/[a-z0-9-]+$",
+          "description": "Pack id locked by the group, e.g. 'domain/auth-core'."
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Locked pack version (semver string)."
         }
       },
       "additionalProperties": false

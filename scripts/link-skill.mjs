@@ -41,7 +41,9 @@ const PLATFORM_NAMES = ['claude-code', 'codex', 'cursor', 'gemini-cli', 'opencod
 const MANAGED_BEGIN = '<!-- BEGIN POLYRIG MANAGED BLOCK -->';
 const MANAGED_END = '<!-- END POLYRIG MANAGED BLOCK -->';
 // Resources the installed skills read at runtime via $POLYRIG_ROOT.
-const RUNTIME_RESOURCES = ['scripts', 'packs', 'schemas', 'skill', 'docs', 'SPEC.md'];
+// (docs/ is intentionally excluded — it is gitignored, not in the npm package,
+// and no skill reads it at runtime.)
+const RUNTIME_RESOURCES = ['scripts', 'packs', 'schemas', 'skill', 'SPEC.md'];
 
 function usage(msg) {
   if (msg) console.error(`error: ${msg}`);

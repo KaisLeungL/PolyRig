@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kaisleung/polyrig/schemas/group.schema.json",
+  "title": "PolyRig group.yaml",
+  "description": "Metadata for a PolyRig pack group (groups/<name>/group.yaml). The instance format is YAML; validation is applied to the object obtained after parsing the YAML. A group is a versioned, reference-style manifest: it references member packs by id and pinned version, plus optional out-of-group pack dependencies. Member packs stay atomic and live under packs/<type>/<id>/. A group is the install and publish unit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "version", "last_reviewed", "summary", "members"],
+  "$defs": {
+    "packRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^(stack|domain)/[a-z0-9-]+$",
+          "description": "Referenced pack id, '<type>/<short-name>'."
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+          "description": "Exact pinned semver of the referenced pack (lockfile-style)."
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^group/[a-z0-9-]+$",
+      "description": "Group identifier: 'group/<name>', e.g. 'group/auth'. Must agree with the group's directory path (groups/<name>/group.yaml)."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$",
+      "description": "Semantic version of the group. Exactly locks every reference below; any member content change requires a new group version."
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Date (YYYY-MM-DD) the group composition was last reviewed by a human."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One-line description of what the group covers."
+    },
+    "members": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/packRef" },
+      "description": "Member packs, each pinned to an exact version (lockfile). A group references at least one member."
+    },
+    "requires": {
+      "type": "array",
+      "default": [],
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/packRef" },
+      "description": "Out-of-group ordinary packs this group depends on, each pinned to an exact version. Default []. An id here must not also appear in members."
+    }
+  }
+}
