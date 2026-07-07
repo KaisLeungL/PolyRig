@@ -187,6 +187,18 @@ dependencies. `update <type>/<name>` or `update --all` upgrade explicitly —
 there is no background auto-update. Published versions are immutable;
 `deprecated` warns on download and `removed` blocks new downloads.
 
+**Check freshness without changing anything** with `update --check` (read-only):
+
+```sh
+node "$POLYRIG_ROOT/scripts/install-pack.mjs" update --all --check
+```
+
+It reports each installed pack as `UP-TO-DATE`, `UPSTREAM-NEWER`, `DEPRECATED`,
+`REMOVED`, or `LOCAL-DRIFT` (or `UNKNOWN` when the registry is unreachable),
+then exits without downloading or writing. Freshness is the pack author's job —
+they signal "this pack moved on" by publishing a new version; the client only
+compares versions and lifecycle status.
+
 ## Pack groups: bundling related packs
 
 Some packs only make sense together — a shared base like `domain/auth-core` plus
@@ -245,6 +257,25 @@ creating a `group.yaml` and bundling it, so you rarely run the command by hand.
 dependency order; pasting a member pack URL soft-guides toward the group while
 still allowing a single-pack install (which pulls that pack's `requires` closure
 but not its group siblings).
+
+## What's new in v0.3
+
+v0.3 sharpens the positioning to **experience injection** and hardens the loop:
+
+- **Repositioning + `.polyrig/` layout.** PolyRig now purely gathers, packages,
+  and injects experience — it no longer generates project-management scaffolding
+  (`SPEC.md`, `feature_list.json`, `init.*` are gone). All artifacts live under
+  `.polyrig/`, with each pack copied into `.polyrig/vault/` **preserving its own
+  directory structure**; `AGENTS.md`/`CLAUDE.md` become pure-pointer managed
+  blocks merged non-destructively (cold-start or incremental injection produce
+  the same artifacts and never touch a host `.harness/`).
+- **Freshness check.** `install-pack.mjs update --check` is a read-only health
+  report (`UP-TO-DATE` / `UPSTREAM-NEWER` / `DEPRECATED` / `REMOVED` /
+  `LOCAL-DRIFT`). (See [Registry](#registry-sharing-packs).)
+- **Packs may carry skills + scripts.** A pack can opt-in to `skills/` (injected
+  as project-level symlinks via `polyrig skills inject`, reclaimed precisely on
+  uninstall) and `scripts/` (copied as read-only example data, never executed).
+  The old "a pack is never a skill" rule softens to "data by default, may opt-in".
 
 ## What's new in v0.2
 

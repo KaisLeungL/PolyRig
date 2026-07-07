@@ -157,6 +157,17 @@ node "$POLYRIG_ROOT/scripts/install-pack.mjs" install \
 <type>/<name>` 或 `update --all` 显式升级 —— 没有后台自动更新。已发布版本不可变；
 `deprecated` 下载时警告，`removed` 禁止新下载。
 
+**只查不改的新鲜度检查** —— `update --check`（只读）：
+
+```sh
+node "$POLYRIG_ROOT/scripts/install-pack.mjs" update --all --check
+```
+
+逐个已装 pack 报告 `UP-TO-DATE` / `UPSTREAM-NEWER` / `DEPRECATED` / `REMOVED` /
+`LOCAL-DRIFT`（registry 不可达时 `UNKNOWN`），不下载、不写盘。判断知识是否过时是
+pack 作者的责任 —— 他们通过发布新版本表达"这个 pack 旧了"，客户端只比版本号和生命
+周期状态。
+
 ## Pack group（组）：打包有关联的 packs
 
 有些 pack 只有放在一起才有意义 —— 一个共享基座（如 `domain/auth-core`）加上在它
@@ -207,6 +218,22 @@ polyrig pack-group groups/auth
 **安装组**是镜像操作：组有自己的 canonical URL（`/groups/<name>/versions/<version>`）。
 粘贴组 URL 会按依赖顺序整组安装；粘贴成员 pack URL 则软引导安装整组，同时也允许只单装
 该 pack（会拉入该 pack 的 `requires` 闭包，但不带组内兄弟）。
+
+## v0.3 新增
+
+v0.3 把定位收敛到**经验注入**，并夯实整个循环：
+
+- **重定位 + `.polyrig/` 布局。** PolyRig 现在纯粹聚集、封装、注入经验——不再生成
+  项目管理脚手架（`SPEC.md`、`feature_list.json`、`init.*` 已移除）。全部产物收进
+  `.polyrig/`，每个 pack 拷进 `.polyrig/vault/` **保留其原有目录结构**；
+  `AGENTS.md`/`CLAUDE.md` 变为纯指针托管块、增量并入不覆盖（冷启动与增量注入产出
+  相同产物，且永不触碰宿主 `.harness/`）。
+- **新鲜度检查。** `install-pack.mjs update --check` 是只读健康报告
+  （`UP-TO-DATE` / `UPSTREAM-NEWER` / `DEPRECATED` / `REMOVED` / `LOCAL-DRIFT`）。
+  （见 [Registry](#registrysharing-packs)。）
+- **pack 可携带 skill 与 script。** pack 可 opt-in 携带 `skills/`（经
+  `polyrig skills inject` 软链进项目触发目录，卸载时精确回收）与 `scripts/`（作为
+  只读示例数据拷入，永不执行）。旧铁律"pack 永不是 skill"改口为"默认是数据，可 opt-in"。
 
 ## v0.2 新增
 
