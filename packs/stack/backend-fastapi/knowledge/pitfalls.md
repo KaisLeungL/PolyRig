@@ -23,6 +23,12 @@ Each entry: symptom → why it happens → the rule. Red lines are non-negotiabl
 - **Rule:** secrets come from the environment only. `.env` is gitignored;
   `.env.example` (committed) documents every variable with placeholders.
   Required secrets have NO default — the app must refuse to start without them. [Evidence: E010]
+- **Also gitignore runtime data stores that hold credential material.** A local
+  dev database (e.g. a SQLite `*.db` file) can contain live session tokens, [Evidence: E010]
+  password hashes, or refresh tokens. It must never enter version control — add [Evidence: E010]
+  the dev DB glob and tool caches (`*.db`, `.venv/`, `__pycache__/`,
+  `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`) to `.gitignore` alongside
+  `.env` when the project is first scaffolded, not after the file already exists.
 
 ## Blocking I/O inside async handlers
 
@@ -110,6 +116,23 @@ Each entry: symptom → why it happens → the rule. Red lines are non-negotiabl
   the wire format to the schema and drags session lifetime into serialization.
 - **Rule:** every handler declares an explicit response model; ORM objects are
   mapped to schemas at the service/handler boundary and never escape it. [Evidence: E007]
+
+## Linter flags the FastAPI dependency-injection idiom
+
+- **Symptom:** a fresh project wires up ruff (or flake8-bugbear), and the lint
+  route immediately fails on every handler with the `B008` "function call in
+  argument defaults" finding — pointing at the standard `Depends(...)`,
+  `Query(...)`, `Header(...)` defaults FastAPI itself documents.
+- **Why:** B008 is a good general Python rule (mutable/expensive defaults
+  evaluated once), but FastAPI's declarative DI *deliberately* uses callables
+  as argument defaults; the framework re-evaluates them per request. The rule
+  and the framework idiom collide, and this bites on the very first lint run
+  before any real bug exists.
+- **Rule:** do not silence B008 inline and do not rewrite the FastAPI idiom. [Evidence: E016, E005]
+  Configure the exception once in `pyproject.toml` with a reason — the
+  `flake8-bugbear` `extend-immutable-calls` list (add `fastapi.Depends`,
+  `fastapi.Query`, `fastapi.Header`, etc.) — so the DI idiom passes while B008 [Evidence: E005]
+  still guards genuine mutable-default bugs elsewhere.
 
 ## 422 vs 400 semantics surprises
 

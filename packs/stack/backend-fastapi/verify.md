@@ -1,7 +1,7 @@
 # FastAPI backend — verification routes
 
 Standing rule: **a feature is not done until the relevant routes below pass.** [Evidence: E018]
-Never mark a feature `verified` in `feature_list.json` on the strength of [Evidence: E018]
+Never treat a feature as done on the strength of [Evidence: E018]
 "the code looks right". Command names below assume the uv workflow; substitute
 the project's chosen tool invocations 1:1 if it differs.
 

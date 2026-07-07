@@ -1,38 +1,19 @@
-<!-- polyrig: Template for the target project's AGENTS.md — the primary agent instruction file. Keep it THIN: routing + hard rules only. Never add knowledge prose here; knowledge lives under docs/. Remove all `polyrig:` comments from the final artifact. -->
+<!-- polyrig: This is the PolyRig MANAGED BLOCK to inject into the target project's AGENTS.md. Merge it between the BEGIN/END markers (see the skill's "Managed-block injection" section): replace the marked span if present, append if the file exists without markers, create the file if absent. It is PURE ROUTING ONLY — never inline red lines, strong rules, or decision-tree prose; that knowledge lives in .polyrig/vault/. Emit one "MUST read" row per selected stack pack and per selected domain pack, replacing the placeholder rows. Remove all `polyrig:` comments from the final artifact. -->
+<!-- BEGIN POLYRIG MANAGED BLOCK -->
+## PolyRig experience (injected)
 
-# {{PROJECT_NAME}} — Agent Instructions
+This project has PolyRig-injected domain/stack experience. The knowledge lives on
+disk under `.polyrig/vault/` — read it before working in the areas it covers.
+This block is routing only; the actual rules and red lines live in the vault files.
 
-This repository was initialized by PolyRig. Before doing any feature work, route
-yourself through the files below.
-
-## Routing index
-
-| Need | Read |
+| Before working on… | You MUST read |
 |---|---|
-| Requirements, stack decisions, constraints, red lines | `SPEC.md` |
-| What to build next, feature state, acceptance criteria | `feature_list.json` |
-| Stack daily implementation knowledge | `docs/stacks/{{STACK_SHORT_NAME}}/overview.md`, `docs/stacks/{{STACK_SHORT_NAME}}/pitfalls.md`, `docs/stacks/{{STACK_SHORT_NAME}}/verify.md` |
-| Stack evidence and source trace | Read `docs/stacks/{{STACK_SHORT_NAME}}/sources.md` when handling strong-rule disputes, dependency updates, security/reliability audits, or provenance tracing |
-| Domain daily implementation knowledge | `docs/domains/{{DOMAIN_SHORT_NAME}}/overview.md`, `docs/domains/{{DOMAIN_SHORT_NAME}}/pitfalls.md`, `docs/domains/{{DOMAIN_SHORT_NAME}}/verify.md` |
-| Domain evidence and source trace | Read `docs/domains/{{DOMAIN_SHORT_NAME}}/sources.md` when handling strong-rule disputes, dependency updates, security/reliability audits, or provenance tracing |
-| How to verify a feature | `docs/verify.md` |
-| Resolved dependency versions (dated snapshots) | `deps.resolved.md` |
-| Provenance: which packs, versions, checksums | `.polyrig/manifest.json` |
+| {{STACK_SHORT_NAME}} (build, conventions, pitfalls, verification) | `.polyrig/vault/stacks/{{STACK_SHORT_NAME}}/knowledge/*.md`, `.../verify.md` (and `.../references/sources.md` for provenance / dependency / audit disputes) |
+| {{DOMAIN_SHORT_NAME}} (domain rules, red lines, pitfalls, verification) | `.polyrig/vault/domains/{{DOMAIN_SHORT_NAME}}/knowledge/*.md`, `.../verify.md` (and `.../references/sources.md` for provenance / dependency / audit disputes) |
+| Dependency versions / whether a version is current | `.polyrig/deps.resolved.md` — dated snapshots; re-verify online before adding or upgrading a dependency if the entry is stale or its re-check condition is met |
+| Which packs/versions were injected, checksums | `.polyrig/manifest.json` |
 
-<!-- polyrig: Emit the daily implementation and evidence/source-trace rows above for every selected stack pack and every selected domain pack, replacing the placeholder rows. -->
-
-## Hard rules
-
-1. Work on **one feature at a time**, in `depends_on` order, from `feature_list.json`.
-2. Update `feature_list.json` after **every** implementation attempt. Status
-   transitions: `planned → in_progress → implemented → verified`, with
-   `blocked` or `rejected` when applicable. Record blockers and deviations in
-   the feature's `notes`.
-3. **Never** set a feature's status to `verified` unless its
-   `verification.automated` commands actually passed, or its
-   `verification.manual` checks are explicitly documented in the feature's
-   `notes`.
-4. Before adding or upgrading a dependency, check `deps.resolved.md`. If the
-   `Resolved-at` date is stale, or the recorded entry's re-check condition is
-   met, re-verify the version online before using it.
-5. Never write secrets, credentials, or tokens into version control.
+Obey the red lines and strong rules stated in the routed vault files. Do not
+guess security-critical behavior — the vault knowledge is authoritative for the
+areas it covers.
+<!-- END POLYRIG MANAGED BLOCK -->

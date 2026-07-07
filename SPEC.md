@@ -1,32 +1,41 @@
 # PolyRig — Specification (v0.2)
 
 > Status: core spec locked 2026-07-04 after design grill session; v0.2 shipped
-> npm install, pack authoring, and the registry loop (see §6 roadmap).
-> Implementation plan lives in `feature_list.json` (plan-as-state; no separate PLAN.md).
+> npm install, pack authoring, and the registry loop (see §6 roadmap). Artifact
+> relocation + repositioning to experience injection locked 2026-07-07 (Decision A;
+> see §8).
 
 ## 1. Positioning
 
-PolyRig is a **universal AI harness pack protocol and context assembly system** that
-initializes any-tech-stack projects into **agent-ready repositories**.
+PolyRig is a **universal protocol for aggregating, packaging, and injecting domain
+and tech-stack experience**. It captures hard-won stack and domain knowledge into
+reusable **packs**, then **injects** the selected packs' knowledge into a target
+project so any agent works from it.
 
-It does **not** generate business code scaffolding. It generates the context layer
-that AI coding needs: structured requirements, technical decisions with rationale,
-context routing, dependency lookup strategy, validation routes, and a persistent
-feature state machine — all versionable, reviewable, and **agent-neutral**.
+It does **not** generate business code scaffolding, and it does **not** produce
+project specs, feature state machines, or init scripts. What it injects is
+versionable, reviewable, and **agent-neutral**: pack knowledge physically copied
+into `.polyrig/vault/`, a dated dependency snapshot (`.polyrig/deps.resolved.md`),
+an audit manifest (`.polyrig/manifest.json`), and pure **routing pointers** in
+AGENTS.md / CLAUDE.md. Cold-starting a new project and incrementally injecting into
+an existing one produce the **same** set of experience artifacts.
 
-- **v1 execution entries**: `polyrig` for project initialization and
+- **v1 execution entries**: `polyrig` for experience injection and
   `polyrig-pack-author` for pack creation/update, both installable into
   supported local agent platforms.
-- **Long-term value binding**: the Pack Protocol + generated repository context,
+- **Long-term value binding**: the Pack Protocol + injected repository experience,
   NOT any one agent runtime.
 
 ### Non-goals
 
 - Generating business code skeletons (login modules, network layers, UI templates).
+- Producing project management / scaffolding artifacts: no `SPEC.md`,
+  `feature_list.json`, `init.plan.md`, or `init.sh` in the target project.
+- Inlining pack experience (red lines, strong rules, decision trees) into
+  AGENTS.md / CLAUDE.md — those stay in the vault; the managed block only routes.
 - Competing with create-next-app / Nx / projen style scaffolders.
 - A real TUI. Interaction is conversational interview (one question at a time,
   recommended answers, defaults supported).
-- Remote pack distribution (deferred; the manifest reserves structure for it).
 - Pack upgrade tooling (deferred; `.polyrig/manifest.json` records everything an
   upgrade command will need).
 
@@ -42,9 +51,9 @@ The layers must never blur into one "big prompt repository":
 
 | Layer | Binding | Contents |
 |---|---|---|
-| 1. Execution (runtime) | Agent-platform adapter | `skill/polyrig/` — project initialization; `skill/polyrig-pack-author/` — pack creation and maintenance |
-| 2. Protocol & assets | Agent-neutral | `packs/{stack,domain}/` + `schemas/` (JSON Schemas for pack, feature_list, manifest) |
-| 3. Generated artifacts | Agent-neutral, live in the target project | SPEC.md, AGENTS.md, CLAUDE.md, feature_list.json, docs/stacks/, docs/domains/, docs/verify.md, deps.resolved.md, .polyrig/manifest.json, init.plan.md, init.sh |
+| 1. Execution (runtime) | Agent-platform adapter | `skill/polyrig/` — experience injection; `skill/polyrig-pack-author/` — pack creation and maintenance |
+| 2. Protocol & assets | Agent-neutral | `packs/{stack,domain}/` + `schemas/` (JSON Schemas for pack and manifest) |
+| 3. Injected artifacts | Agent-neutral, live in the target project | `.polyrig/vault/stacks/<id>/`, `.polyrig/vault/domains/<id>/` (copied pack knowledge), `.polyrig/deps.resolved.md`, `.polyrig/manifest.json`, plus routing-pointer managed blocks in AGENTS.md / CLAUDE.md |
 
 ### Repository layout (this repo)
 
@@ -55,7 +64,6 @@ polyrig/
   LICENSE
   SPEC.md                   # this file
   package.json              # published to npm as `polyrig`; `files` bundles the runtime, `bin` runs link-skill.mjs
-  feature_list.json         # implementation plan & state for PolyRig itself
 
   skill/
     polyrig/
@@ -63,13 +71,9 @@ polyrig/
       agents/
         openai.yaml
       templates/
-        SPEC.md
-        AGENTS.md
-        CLAUDE.md
-        feature_list.json
+        AGENTS.md           # routing-pointer managed block
+        CLAUDE.md           # same managed-block pointer content
         manifest.json
-        init.plan.md
-        init.sh
         deps.resolved.md
     polyrig-pack-author/
       SKILL.md
@@ -96,14 +100,13 @@ polyrig/
 
   schemas/
     pack.schema.json
-    feature_list.schema.json
     manifest.schema.json
 
   scripts/                  # zero-dependency Node (.mjs); no workspace toolchain
     link-skill.mjs          # install PolyRig skills into supported agent platforms
     install-pack.mjs        # download/verify/install packs from a PolyRig registry
     validate-pack.mjs       # validate a pack dir against pack.schema.json
-    validate-artifacts.mjs  # validate a target project's generated JSON artifacts
+    validate-artifacts.mjs  # validate a target project's injected .polyrig/manifest.json
     build-pack-index.mjs    # scan pack roots, emit discovery index
     doctor.mjs              # env & install sanity check
 
@@ -179,12 +182,12 @@ trust:
 - Volatile facts (SDK versions, API details) live in `deps.yaml` as coordinates +
   `lookup` query strategy + official doc URLs + `version_policy: verify_latest_before_use`
   plus `evidence: [...]`.
-- During assembly the AI verifies current versions/breaking changes online and
-  writes results into the target project's **`deps.resolved.md`** with resolved-at
-  date, source, confidence, and re-check action. Verified results are never
-  written back into pack prose as eternal facts.
+- During injection the AI verifies current versions/breaking changes online and
+  writes results into the target project's **`.polyrig/deps.resolved.md`** with
+  resolved-at date, source, confidence, and re-check action. Verified results are
+  never written back into pack prose as eternal facts.
 - `last_reviewed` older than threshold (default 180 days) triggers a staleness
-  warning during assembly.
+  warning during injection.
 
 ### Discovery & trust model
 
@@ -203,65 +206,46 @@ Trust rules (v1):
 | project | yes | **never by default** |
 | remote | unsupported in v1 | — |
 
-When an override is detected, assembly MUST announce it explicitly:
+When an override is detected, injection MUST announce it explicitly:
 source path, whether it carries scripts, and required review action.
 
-## 4. The `/polyrig` interview (execution flow)
+## 4. The `/polyrig` injection flow (execution flow)
 
-Conversational, fixed **seven phases**, 1–3 questions per phase, every question
-carries a recommended answer and supports defaults. Interaction language follows
-the user (zh-CN for this author); generated artifacts are English. The language
-switch point is stated in SKILL.md.
+Conversational, **four phases**, 1–3 questions per phase, every question carries a
+recommended answer and supports defaults. Interaction language follows the user
+(zh-CN for this author); injected artifacts are English. The language switch point
+is stated in SKILL.md. The flow no longer collects project specs, first features,
+or verification routes — those were project-management inputs to the removed
+artifacts.
 
-1. **Project identity** — name, one-line purpose, repo layout (monorepo or not is
-   the user's choice, never imposed).
+1. **Project identity + injection mode** — name, one-line purpose; probe whether
+   the target directory already has code / `AGENTS.md` / `.harness/` to decide
+   **cold-start** vs **incremental** injection (both produce the same artifacts;
+   the only difference is new-file vs merge-into-existing).
 2. **Target stack** — select stack pack(s).
-3. **Domain packs** — select compatible domain packs (filtered by chosen stacks);
-   resolve `requires`/`conflicts`.
-4. **Constraints** — security red lines, offline/online policy, platform rules.
-5. **First feature** — the concrete first feature with acceptance criteria.
-6. **Verification route** — commands and manual checks per feature.
-7. **Generate** — online version verification, then write all artifacts; announce
-   every file written and every pack override encountered.
+3. **Domain packs / groups** — select compatible domain packs (filtered by chosen
+   stacks) and any compatible group suites; resolve `requires`/`conflicts`.
+4. **Inject** — online version verification, then copy pack knowledge into
+   `.polyrig/vault/`, write `.polyrig/deps.resolved.md` + `.polyrig/manifest.json`,
+   and upsert the routing managed block into AGENTS.md / CLAUDE.md; announce every
+   file written and every pack override encountered.
 
-## 5. Generated artifacts (in the target project)
+## 5. Injected artifacts (in the target project)
 
 | File | Role |
 |---|---|
-| `SPEC.md` | requirements, stack decisions + rationale, architecture constraints, domain boundaries |
-| `AGENTS.md` | **primary agent instruction file**: routing index to all context + hard rules (update feature state after every attempt; never mark `verified` without passing verification) |
-| `CLAUDE.md` | thin Claude Code entry that points to AGENTS.md; no duplicated content |
-| `feature_list.json` | plan-as-state; schema below |
-| `docs/stacks/<id>/`, `docs/domains/<id>/` | pack knowledge and `sources.md` **physically copied** in (knowledge and evidence travel with the repo, enter git, readable by any agent on any machine) |
-| `docs/verify.md` | merged verification routes |
-| `deps.resolved.md` | dated, sourced, confidence-rated online verification results |
-| `.polyrig/manifest.json` | audit chain: polyrig_version, generated_at, language, selected_packs (id, version, source, last_reviewed, copied_to, checksum), overrides |
-| `init.plan.md` | human-reviewable initialization plan (anything non-trivial goes here) |
-| `init.sh` | minimal safe script: `set -euo pipefail`; creates context dirs/files, runs a guarded `git init` when the target is not already inside a repository, and seeds a minimal `.gitignore` (`.env`) if absent; never bulk-installs deps, never edits build files, never writes business code, never fetches remote scripts, never commits (the first commit is a manual follow-up in init.plan.md); header says "Review init.plan.md before running" |
+| `.polyrig/vault/stacks/<id>/`, `.polyrig/vault/domains/<id>/` | pack knowledge (`overview.md`, `pitfalls.md`, per-stack notes, `verify.md`) and `sources.md` **physically copied** in — the experience itself, traveling with the repo, entering git, readable by any agent on any machine |
+| `AGENTS.md` | **routing-pointer managed block only**: which packs were injected + where their vault knowledge lives + a "MUST read the matching vault dir before doing X-type work" route per pack + deps/manifest routes. **Never** inlines red lines, strong rules, or decision trees — those stay in the vault. Merged incrementally via the `<!-- BEGIN POLYRIG MANAGED BLOCK -->` markers, preserving user content outside the block |
+| `CLAUDE.md` | same managed-block pointer content as AGENTS.md (a synonymous entry) |
+| `.polyrig/deps.resolved.md` | dated, sourced, confidence-rated online verification results |
+| `.polyrig/manifest.json` | audit chain: polyrig_version, generated_at, language, selected_packs (id, version, source, last_reviewed, copied_to → `.polyrig/vault/...`, checksum), selected_groups, overrides |
 
-### feature_list.json state machine
-
-States: `planned → in_progress → (blocked) → implemented → verified`, plus
-`rejected`. Each feature:
-
-```json
-{
-  "id": "F001",
-  "title": "Implement Google Sign-In",
-  "status": "planned",
-  "priority": "p0",
-  "depends_on": [],
-  "pack_refs": ["domain/auth-google", "stack/android"],
-  "acceptance_criteria": ["..."],
-  "verification": { "manual": ["..."], "automated": ["./gradlew test"] },
-  "files_expected": [],
-  "notes": ""
-}
-```
-
-AGENTS.md hard rules: the agent must update `feature_list.json` after each
-implementation attempt, and must not set `verified` unless verification commands
-passed or manual verification is explicitly documented.
+Removed in Decision A (§8): the target project no longer receives `SPEC.md`,
+`feature_list.json`, `docs/verify.md`, `init.plan.md`, or `init.sh`. Experience
+that once lived in the generated `SPEC.md` came from packs and now lands in the
+vault (single source); verification **knowledge** ships as each pack's `verify.md`
+inside its vault dir, which AGENTS.md routes to. No experience is lost — only
+relocated.
 
 ## 6. v0.1 scope — golden path
 
@@ -285,18 +269,22 @@ Deferred by roadmap:
 - v0.4 — `domain/auth-wechat` (CN-ecosystem specifics)
 - later — `polyrig-update` in-place upgrade command
 
-## 7. v0.1 acceptance
+## 7. Acceptance
 
 One real cold-start, full chain:
 
-1. Use `/polyrig` to initialize a real small project: **Android + FastAPI +
-   Google Sign-In**.
+1. Use `/polyrig` on a real small project: **Android + FastAPI + Google Sign-In**;
+   pack knowledge is injected into `.polyrig/vault/` with routing pointers in
+   AGENTS.md.
 2. Open a **fresh session with zero verbal context**.
-3. The AI, relying only on the on-disk artifacts, implements the first feature
-   through to **passing verification**.
+3. The AI, relying only on the injected experience (AGENTS.md routes → vault
+   knowledge, `.polyrig/deps.resolved.md`), does the work **correctly applying that
+   experience**: it does not guess security logic, holds the red lines the packs
+   warn about, and follows the injected decision trees. The KPI is *experience
+   applied correctly* — not carrying a feature to a `verified` state.
 
-Secondary gates: `validate-pack.mjs` passes on all builtin packs;
-generated artifacts validate against `schemas/` (checked by
+Secondary gates: `validate-pack.mjs` passes on all builtin packs; the injected
+`.polyrig/manifest.json` validates against `schemas/` (checked by
 `validate-artifacts.mjs`).
 
 This demo is the core narrative of the README.
@@ -310,4 +298,5 @@ This demo is the core narrative of the README.
 | npm-workspace monorepo for PolyRig itself | plain git repo, directory-per-concern, zero-dep scripts |
 | One big `third-party-auth` domain pack | split: auth-core + per-provider packs (pulls `requires` into v1) |
 | Coverage-first: 4 stacks + iOS, shallow | golden path: 4 deep packs, one end-to-end demo |
-| Real TUI initialization | conversational seven-phase interview |
+| Real TUI initialization | conversational injection interview |
+| Context-assembly system + `feature_list.json` feature state machine (generated `SPEC.md` / `init.plan.md` / `init.sh`; KPI = carry a feature to `verified`) | experience injection into `.polyrig/vault/` + routing-pointer AGENTS.md/CLAUDE.md; those artifacts removed; KPI = injected experience applied correctly (Decision A, 2026-07-07) |

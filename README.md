@@ -1,13 +1,17 @@
 # PolyRig
 
-**A universal AI harness pack protocol and context assembly system.**
+**A universal protocol for aggregating, packaging, and injecting domain and
+tech-stack experience.**
 
-PolyRig initializes any-tech-stack projects into **agent-ready repositories**. It does
-**not** generate business code — no login modules, no network layers, no UI templates.
-It generates the context layer that AI coding needs: structured requirements, technical
-decisions with rationale, context routing, dependency lookup strategy, verification
-routes, and a persistent feature state machine — all versionable, reviewable, and
-**agent-neutral**.
+PolyRig captures hard-won stack and domain experience into reusable **packs**, then
+**injects** the selected packs' knowledge into any-tech-stack project so an agent
+works from it. It does **not** generate business code — no login modules, no network
+layers, no UI templates — and it does **not** produce project specs, feature state
+machines, or init scripts. What it injects is versionable, reviewable, and
+**agent-neutral**: pack knowledge copied into `.polyrig/vault/`, a dated dependency
+snapshot, an audit manifest, and pure **routing pointers** in AGENTS.md / CLAUDE.md.
+It works both for **cold-starting a new project** and for **incrementally injecting
+into an existing one** — both paths produce the same experience artifacts.
 
 English | [简体中文](README.zh-CN.md)
 
@@ -20,26 +24,29 @@ Engineers already using AI coding tools hit the same wall over and over:
 - Every **new session** loses the engineering decisions made in the last one.
 - Domain knowledge ends up living in **chat history** instead of the repository.
 
-PolyRig fixes this by putting the context on disk, inside the repository, in formats
-any agent can read on any machine.
+PolyRig fixes this by injecting the experience on disk, inside the repository, in
+formats any agent can read on any machine.
 
-## The core pitch: a real cold-start demo
+## The core pitch: injected experience an agent actually applies
 
-The v0.1 acceptance test is a single end-to-end narrative:
+The acceptance test is a single end-to-end narrative:
 
-1. Use `/polyrig` to initialize a real small project: **Android + FastAPI +
-   Google Sign-In**. A conversational seven-phase interview picks stack packs and
-   domain packs, records constraints, defines the first feature and its verification
-   route, then generates all context artifacts.
+1. Use `/polyrig` on a real small project: **Android + FastAPI + Google Sign-In**.
+   A conversational injection flow picks stack packs and domain packs, resolves
+   their dependencies, verifies versions online, then **injects** the selected
+   packs' knowledge into `.polyrig/vault/` and writes routing pointers into
+   AGENTS.md / CLAUDE.md.
 2. Open a **fresh session with zero verbal context** — no chat history, no
    instructions beyond "look at the repo".
-3. The AI, relying only on the on-disk artifacts (`SPEC.md`, `AGENTS.md`,
-   `feature_list.json`, copied pack knowledge under `docs/`), implements the first
-   feature through to **passing verification**, updating the feature state machine
-   as it goes (`planned → in_progress → implemented → verified`).
+3. The AI, relying only on the on-disk experience (`AGENTS.md` routing pointers →
+   pack knowledge under `.polyrig/vault/`, `.polyrig/deps.resolved.md`), does the
+   work **correctly applying that experience**: it doesn't guess security logic,
+   it holds the red lines the packs warn about, and it follows the injected
+   decision trees.
 
-If a zero-context session can carry a feature to verified, the repository is
-agent-ready. That is the whole point.
+If a zero-context session applies the injected experience correctly — not
+re-deriving pitfalls the packs already document, not crossing a red line — the
+injection worked. That is the whole point.
 
 ## Three-layer architecture
 
@@ -48,20 +55,21 @@ The layers must never blur into one "big prompt repository":
 | Layer | Binding | Contents |
 |---|---|---|
 | 1. Execution (runtime) | Agent-platform adapter | `skill/polyrig/` — project initialization; `skill/polyrig-pack-author/` — pack creation and maintenance; `skill/polyrig-pack-install/` — install/update packs from a registry |
-| 2. Protocol & assets | Agent-neutral | `packs/{stack,domain}/` + `schemas/` (JSON Schemas for pack, feature_list, manifest) |
-| 3. Generated artifacts | Agent-neutral, live in the target project | SPEC.md, AGENTS.md, CLAUDE.md, feature_list.json, docs/stacks/, docs/domains/, docs/verify.md, deps.resolved.md, .polyrig/manifest.json, init.plan.md, init.sh |
+| 2. Protocol & assets | Agent-neutral | `packs/{stack,domain}/` + `schemas/` (JSON Schemas for pack and manifest) |
+| 3. Injected artifacts | Agent-neutral, live in the target project | `.polyrig/vault/stacks/`, `.polyrig/vault/domains/` (copied pack knowledge), `.polyrig/deps.resolved.md`, `.polyrig/manifest.json`, plus routing-pointer managed blocks in AGENTS.md / CLAUDE.md |
 
-The v1 execution entries are the PolyRig skills: `/polyrig` initializes target
-projects, `polyrig-pack-author` creates and updates packs, and
-`polyrig-pack-install` installs packs shared through a PolyRig registry. All
+The v1 execution entries are the PolyRig skills: `/polyrig` injects pack
+experience into target projects, `polyrig-pack-author` creates and updates packs,
+and `polyrig-pack-install` installs packs shared through a PolyRig registry. All
 are installable into Claude Code, Codex, Cursor, Gemini CLI, and OpenCode. The
-long-term value binds to the **Pack Protocol and the generated repository
-context**, not to any one agent runtime.
+long-term value binds to the **Pack Protocol and the injected repository
+experience**, not to any one agent runtime.
 
 ## Pack protocol overview
 
-A pack is a **pure data directory** — never a skill, occupying no skill-trigger
-budget. Two types share one protocol:
+A pack is **data by default**, and MAY opt-in to carry skills (`skills/`, injected
+as project-level symlinks) and example scripts (`scripts/`, copied as data, never
+executed). Two types share one protocol:
 
 - **stack packs** — framework conventions, project structure, build/verify commands,
   version pitfalls (e.g. `stack/android`, `stack/backend-fastapi`).
@@ -72,8 +80,8 @@ Key rules:
 
 - Pack prose holds **slow-changing knowledge only** (decision trees, pitfalls,
   security red lines). Volatile facts (versions, API details) live in `deps.yaml`
-  as coordinates + lookup strategy, verified online at assembly time and written to
-  the target project's dated `deps.resolved.md`.
+  as coordinates + lookup strategy, verified online at injection time and written to
+  the target project's dated `.polyrig/deps.resolved.md`.
 - Every pack carries `references/sources.md` with an Evidence Matrix. Strong
   rules, red lines, recommended defaults, and dependency lookup entries must
   cite stable `[Evidence: E001]` ids so future agents can audit where guidance
@@ -82,8 +90,8 @@ Key rules:
   `~/.claude/polyrig-packs/`), and project `.polyrig/packs/` — with
   most-specific-wins override precedence and an explicit trust model
   (project-level pack scripts never run by default).
-- Selected pack knowledge is **physically copied** into the target project so it
-  travels with the repo and enters git.
+- Selected pack knowledge is **physically copied** into the target project's
+  `.polyrig/vault/` so it travels with the repo and enters git.
 
 ## Authoring packs: `polyrig-pack-author`
 
@@ -179,19 +187,70 @@ dependencies. `update <type>/<name>` or `update --all` upgrade explicitly —
 there is no background auto-update. Published versions are immutable;
 `deprecated` warns on download and `removed` blocks new downloads.
 
-**Pack groups.** Related packs (e.g. a shared `auth-core` plus provider packs)
-can be bundled into a versioned, reference-style **group** — one install-and-
-publish unit that pins each member by exact version while the packs stay atomic.
-A group has its own canonical URL (`/groups/<name>/versions/<version>`); pasting
-it installs the whole suite in dependency order, and pasting a member URL
-soft-guides toward the group while still allowing a single-pack install. See the
-[pack group spec](docs/plans/2026-07-06-polyrig-pack-group-spec.md) and
-[pack protocol](docs/pack-protocol.md#pack-groups) for details.
+## Pack groups: bundling related packs
+
+Some packs only make sense together — a shared base like `domain/auth-core` plus
+the providers that build on it (`domain/auth-google`, `domain/auth-github`).
+Sharing them one at a time loses the association and forces a publish order
+(a provider can't be published before the core it requires). A **group** fixes
+both.
+
+A group is a **versioned, reference-style manifest** — `groups/<name>/group.yaml`
+under the `group/<name>` namespace — that lists member packs by **exact pinned
+version**. The packs stay atomic and independent on disk (a member like
+`auth-core` is still single-installable and can be depended on from elsewhere);
+the group is just a curated bundle that points at them:
+
+```yaml
+# groups/auth/group.yaml
+id: group/auth
+version: 0.1.0
+last_reviewed: 2026-07-06
+summary: OAuth/OIDC sign-in suite — shared auth-core plus Google and GitHub providers
+members:
+  - id: domain/auth-core
+    version: 0.1.0
+  - id: domain/auth-google
+    version: 0.1.0
+  - id: domain/auth-github
+    version: 0.1.0
+requires: []            # exact-pinned refs to packs OUTSIDE the group, if any
+```
+
+A group is **dependency-closed for its members** (every member's `requires`
+resolves to a sibling member or a declared external `requires`), and its
+`requires` graph must be acyclic — `validate-group.mjs` enforces these plus
+version-match and no-duplicate rules. `/polyrig` presents compatible groups as
+"suite" options in the interview, and selecting one pulls every member in
+dependency order.
+
+**Bundle for upload.** The group stays reference-style on disk, so publishing it
+needs one archive that gathers `group.yaml` plus each member. The `polyrig`
+CLI does this without copying files — it streams the scattered members into one
+`.tar.gz` (validating the group first):
+
+```sh
+polyrig pack-group groups/auth
+# -> tmp/auth-0.1.0.tar.gz   (transport only; delete after upload)
+```
+
+Then upload that archive at [polyrig.dev](https://polyrig.dev). The server
+re-extracts it, **jointly validates the whole group** (intra-group `requires`
+resolve within the batch, so there's no publish-order problem), and publishes
+every member atomically. The `polyrig-pack-author` skill walks you through
+creating a `group.yaml` and bundling it, so you rarely run the command by hand.
+
+**Installing a group** is the mirror image: a group has its own canonical URL
+(`/groups/<name>/versions/<version>`). Pasting it installs the whole suite in
+dependency order; pasting a member pack URL soft-guides toward the group while
+still allowing a single-pack install (which pulls that pack's `requires` closure
+but not its group siblings).
 
 ## What's new in v0.2
 
-v0.1 proved the core loop — a zero-context session carrying a feature to
-verified. v0.2 turns that into something installable and shareable:
+v0.1 proved the core loop — a zero-context session correctly applying the
+experience injected from packs. v0.2 turns that into something installable and
+shareable:
 
 - **One-command install.** Published to npm; `npx polyrig install` stages the
   runtime and links the skills — no clone, no build step. (See [Install](#install).)
@@ -203,6 +262,9 @@ verified. v0.2 turns that into something installable and shareable:
   update explicitly. (See [Registry](#registry-sharing-packs).)
 - **Two new built-in packs.** `stack/nextjs` (App Router frontend conventions)
   and `domain/auth-github` (GitHub sign-in) — bringing the built-in set to seven.
+- **Pack groups.** Bundle related packs into a versioned `group/<name>` and
+  ship them as one install-and-publish unit; the auth trio is now `group/auth`.
+  (See [Pack groups](#pack-groups-bundling-related-packs).)
 
 ## Built-in packs
 
@@ -223,12 +285,14 @@ Depth over breadth: focused built-in packs, one end-to-end demo.
 
 The three auth packs are also bundled as the built-in **`group/auth`** suite
 (`groups/auth/group.yaml`) — install the whole sign-in stack in one step, or a
-single member on its own. See [Pack groups](#registry-sharing-packs).
+single member on its own. See [Pack groups](#pack-groups-bundling-related-packs).
 
-The v0.1 golden path (Android + FastAPI + Google Sign-In) remains the
-end-to-end acceptance demo. Secondary gates: `scripts/validate-pack.mjs` passes
-on all builtin packs, and generated artifacts validate against `schemas/`
-(checked by `scripts/validate-artifacts.mjs`).
+The golden path (Android + FastAPI + Google Sign-In) remains the end-to-end
+acceptance demo: it proves the injected vault experience is consumed correctly by
+a zero-context agent that holds the red lines. Secondary gates:
+`scripts/validate-pack.mjs` passes on all builtin packs, and the injected
+`.polyrig/manifest.json` validates against `schemas/` (checked by
+`scripts/validate-artifacts.mjs`).
 
 ## Non-goals
 

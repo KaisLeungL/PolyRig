@@ -5,7 +5,7 @@
 
 import assert from 'node:assert';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, statSync } from 'node:fs';
 import http from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -111,6 +111,9 @@ addPack('domain/gone-pack', '0.1.0', { status: 'removed' });
 addPack('domain/corrupt-pack', '0.1.0', { corruptSha: true });
 // Private, org-scoped pack: only reachable with the org's bearer token.
 addPack('domain/private-pack', '0.1.0', { orgSlug: 'acme', notes: 'private release' });
+// Published pack used by the --check REMOVED case: installed while published,
+// then flipped to removed in the registry to simulate a platform takedown.
+addPack('domain/check-removed', '0.1.0');
 
 // --- pack group fixture: the auth trio (core is depended on by the providers) ---
 const authMembership = [{ id: 'group/auth', version: '0.1.0' }];
@@ -470,6 +473,81 @@ try {
   check('--single pulls the requires closure (auth-core)', existsSync(join(singleDest, 'domain/auth-core/pack.yaml')));
   check('--single does NOT pull the sibling (auth-google)', !existsSync(join(singleDest, 'domain/auth-google')), r.stdout);
   check('--single writes no group record', !existsSync(join(singleDest, '.polyrig-groups/auth.json')));
+
+  // --- update --check (read-only health report) ----------------------------
+
+  // 23. UPSTREAM-NEWER: install 0.1.0 (registry has 0.2.0) then --all --check.
+  const chkDest = join(work, 'packs-check');
+  r = await run(['install', canonical('domain/hello-registry', '0.1.0'), '--dest', chkDest, '--yes']);
+  check('check: setup 0.1.0 installed', r.status === 0, r.stdout + r.stderr);
+  r = await run(['update', '--all', '--check', '--dest', chkDest]);
+  check('check: --all --check exits 0', r.status === 0, r.stdout + r.stderr);
+  check('check: reports UPSTREAM-NEWER with version arrow',
+    r.stdout.includes('UPSTREAM-NEWER') && r.stdout.includes('0.1.0 -> 0.2.0'), r.stdout);
+  check('check: prints CHECK summary line', r.stdout.includes('CHECK summary:'), r.stdout);
+
+  // 24. UP-TO-DATE: update to latest, then --check reports up-to-date.
+  r = await run(['update', 'domain/hello-registry', '--dest', chkDest, '--yes']);
+  check('check: updated to 0.2.0', r.status === 0, r.stdout + r.stderr);
+  r = await run(['update', 'domain/hello-registry', '--check', '--dest', chkDest]);
+  check('check: reports UP-TO-DATE at latest', r.status === 0 && r.stdout.includes('UP-TO-DATE'), r.stdout + r.stderr);
+
+  // 25. DEPRECATED not masked: updates endpoint 404s for a deprecated-only pack,
+  //     but --check still reports DEPRECATED (proves it queries install-metadata).
+  const depDest = join(work, 'packs-check-dep');
+  r = await run(['install', canonical('domain/old-pack', '0.1.0'), '--dest', depDest, '--yes', '--allow-deprecated']);
+  check('check: setup deprecated pack installed', r.status === 0, r.stdout + r.stderr);
+  r = await run(['update', 'domain/old-pack', '--check', '--dest', depDest]);
+  check('check: reports DEPRECATED despite updates 404',
+    r.status === 0 && r.stdout.includes('DEPRECATED'), r.stdout + r.stderr);
+
+  // 26. REMOVED: install while published, flip registry entry to removed, --check.
+  const remDest = join(work, 'packs-check-removed');
+  r = await run(['install', canonical('domain/check-removed', '0.1.0'), '--dest', remDest, '--yes']);
+  check('check: setup check-removed installed', r.status === 0, r.stdout + r.stderr);
+  packs.get('domain/check-removed/0.1.0').status = 'removed';
+  r = await run(['update', 'domain/check-removed', '--check', '--dest', remDest]);
+  check('check: reports REMOVED', r.status === 0 && r.stdout.includes('REMOVED'), r.stdout + r.stderr);
+  packs.get('domain/check-removed/0.1.0').status = 'published'; // restore for isolation
+
+  // 27. LOCAL-DRIFT: tamper the recorded sha256 in .polyrig-install.json.
+  const driftDest = join(work, 'packs-check-drift');
+  r = await run(['install', canonical('domain/hello-registry', '0.1.0'), '--dest', driftDest, '--yes']);
+  check('check: setup drift pack installed', r.status === 0, r.stdout + r.stderr);
+  const driftRec = join(driftDest, 'domain/hello-registry/.polyrig-install.json');
+  const driftMeta = JSON.parse(readFileSync(driftRec, 'utf8'));
+  driftMeta.sha256 = `sha256:${'1'.repeat(64)}`;
+  writeFileSync(driftRec, `${JSON.stringify(driftMeta, null, 2)}\n`);
+  r = await run(['update', 'domain/hello-registry', '--check', '--dest', driftDest]);
+  check('check: reports LOCAL-DRIFT on tampered sha256',
+    r.status === 0 && r.stdout.includes('LOCAL-DRIFT'), r.stdout + r.stderr);
+
+  // 28. UNKNOWN non-fatal: point at a dead registry; pack reports UNKNOWN, exit 0.
+  r = await run(['update', '--all', '--check', '--dest', chkDest, '--registry', 'http://127.0.0.1:1']);
+  check('check: dead registry -> UNKNOWN, still exit 0',
+    r.status === 0 && r.stdout.includes('UNKNOWN'), r.stdout + r.stderr);
+
+  // 29. private pack: with token reports a state; without token -> UNKNOWN, exit 0.
+  const chkPriv = join(work, 'packs-check-priv');
+  r = await run(['install', privateCanonical('acme', 'domain/private-pack', '0.1.0'), '--dest', chkPriv, '--yes', '--token', 'test-token']);
+  check('check: setup private pack installed', r.status === 0, r.stdout + r.stderr);
+  r = await run(['update', 'domain/private-pack', '--check', '--dest', chkPriv, '--token', 'test-token']);
+  check('check: private pack with token is checkable', r.status === 0 && r.stdout.includes('CHECK domain/private-pack'), r.stdout + r.stderr);
+  r = await run(['update', 'domain/private-pack', '--check', '--dest', chkPriv]);
+  check('check: private pack without token -> UNKNOWN, exit 0',
+    r.status === 0 && r.stdout.includes('UNKNOWN'), r.stdout + r.stderr);
+
+  // 30. read-only: --check does not modify the install record or pack dir.
+  const roRec = join(chkDest, 'domain/hello-registry/.polyrig-install.json');
+  const roBefore = readFileSync(roRec, 'utf8');
+  const roMtimeBefore = statSync(roRec).mtimeMs;
+  r = await run(['update', '--all', '--check', '--dest', chkDest]);
+  check('check: install record unchanged after --check',
+    readFileSync(roRec, 'utf8') === roBefore && statSync(roRec).mtimeMs === roMtimeBefore, r.stdout + r.stderr);
+
+  // 31. single-target --check on a not-installed pack fails non-zero.
+  r = await run(['update', 'domain/nonexistent', '--check', '--dest', chkDest]);
+  check('check: not-installed single target fails non-zero', r.status !== 0, r.stdout + r.stderr);
 } finally {
   server.close();
   rmSync(work, { recursive: true, force: true });

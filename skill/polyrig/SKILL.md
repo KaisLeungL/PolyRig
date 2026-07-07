@@ -1,22 +1,34 @@
 ---
 name: polyrig
-description: Initialize any-tech-stack project as an agent-ready repository through a seven-phase interview. Use when the user types /polyrig, wants to cold-start a new project for AI coding, asks to make a project "agent-ready", mentions PolyRig or "harness pack", or wants to assemble project context (spec, feature plan, stack/domain knowledge, verification routes) for AI coding agents. Discovers knowledge packs, interviews the user, and generates SPEC.md, AGENTS.md, feature_list.json, copied pack docs, and an audit manifest into the target project.
+description: Inject reusable domain/tech-stack experience into a project. Use when the user types /polyrig, wants to cold-start a new project for AI coding, wants to add PolyRig knowledge to an existing project, asks to make a project "agent-ready", or mentions PolyRig or "harness pack". Discovers knowledge packs, interviews the user, copies the selected packs' knowledge into `.polyrig/vault/`, records a dated dependency snapshot and an audit manifest, and writes a pure-pointer PolyRig block into AGENTS.md/CLAUDE.md. Works for both new-project cold-start and existing-project incremental injection.
 ---
 
 # PolyRig — /polyrig
 
-PolyRig assembles the **context layer** an AI coding agent needs: requirements,
-stack decisions with rationale, copied pack knowledge, dependency lookup results,
-verification routes, and a persistent feature state machine. It does **NOT**
-scaffold business code. Rationale and full contracts: `SPEC.md` at the PolyRig
-repo root (resolved below as `$POLYRIG_ROOT/SPEC.md`).
+PolyRig **gathers, packages, and injects** reusable domain/tech-stack experience.
+It copies the selected packs' knowledge into the target project's
+`.polyrig/vault/`, records a dated dependency snapshot (`.polyrig/deps.resolved.md`)
+and an audit manifest (`.polyrig/manifest.json`), and writes a **pure-pointer**
+PolyRig block into `AGENTS.md`/`CLAUDE.md` so agents know the experience is there
+and how to use it. It does **NOT** scaffold business code, and it does **NOT**
+produce a project spec, a feature state machine, or init scripts. Rationale and
+full contracts: `SPEC.md` at the PolyRig repo root (resolved below as
+`$POLYRIG_ROOT/SPEC.md` — this is PolyRig's own product spec, not a generated
+artifact).
 
-**Language rule:** conduct the interview in the user's language. ALL generated
+**Two injection modes, same artifacts:** cold-start (new/empty project) and
+incremental injection (existing project, possibly with its own `.harness/`).
+Both produce the **same** experience artifacts under `.polyrig/` and the **same**
+managed block; the only difference is create-new vs. merge-into-existing.
+
+**Language rule:** conduct the interview in the user's language. ALL injected
 artifacts are written in English. Record both in the manifest's `language` field.
 
 **Thin-skill rule:** this file carries flow, routing, and formats only. Every
 piece of stack or domain knowledge comes from packs — never improvise knowledge;
-if a pack does not cover something, say so and record it as a constraint or note.
+if a pack does not cover something, say so and note it. **Never inline pack
+knowledge (red lines, strong rules, decision trees) into AGENTS.md** — the
+experience lives in `.polyrig/vault/`; AGENTS.md only routes to it.
 
 ## Step 0 — Resolve POLYRIG_ROOT (once, before P2)
 
@@ -46,23 +58,33 @@ tell the user to run `npx polyrig install` (which stages the runtime under
 `~/.polyrig/runtime`); if they have a PolyRig git checkout instead, ask for its
 path and use that as `POLYRIG_ROOT`.
 
-## The interview — seven phases
+## The injection flow — four phases
 
-Fixed order P1–P7. Ask **1–3 questions per phase, one at a time**. Every question
+Fixed order P1–P4. Ask **1–3 questions per phase, one at a time**. Every question
 must state a **recommended answer** and accept a **default** (an empty/“you decide”
 reply takes the recommendation). Summarize what was recorded at the end of each phase.
+PolyRig does not gather project specifications — it only decides **which experience
+packs to inject** and then injects them.
 
-### P1 — Project identity
+### P1 — Project identity and injection mode
 
-Goal: name, purpose, location, layout. Ask:
-1. Project name and one-line purpose? (no default — required)
-2. Target directory? (recommend: a new directory named after the project under the
-   current working directory)
-3. Repo layout — monorepo or single-purpose repo? Present both neutrally; this is
-   the **user's call, never imposed**. (recommend based on how many stacks they
-   described; default: single repo)
+Goal: name, target directory, and cold-start vs. incremental. Ask:
+1. Project name and one-line purpose? (purpose is used only to recommend packs —
+   it is not recorded as a spec. No default for the name — required.)
+2. Target directory? (recommend: for a new project, a new directory named after it
+   under the current working directory; for injection, the existing project root)
 
-Record: name, purpose, target dir, layout choice + one-sentence why.
+Then **detect the injection mode** (do not ask — inspect the target dir):
+- If the target dir is missing/empty → **cold-start**.
+- If it already has code / an `AGENTS.md` / a `.harness/` → **incremental
+  injection**. A non-empty target is **expected** here, not a blocker.
+
+Both modes produce the same artifacts; the difference is only create-new vs.
+merge-into-existing (see the managed-block rule in the assembly procedure). Do
+**not** ask about repo layout or other project-spec questions — the new
+positioning does not collect them.
+
+Record: name, target dir, injection mode.
 
 ### P2 — Target stack
 
@@ -78,7 +100,8 @@ stack pack(s) apply (recommend the ones matching the stated purpose; multiple
 allowed). If no stack pack matches the user's stack, say so plainly and offer to
 proceed with domain packs only or stop.
 
-Record: selected stack pack ids and the user's rationale.
+Record: selected stack pack ids and the user's rationale (for the manifest audit
+trail only).
 
 ### P3 — Domain packs and group suites
 
@@ -103,7 +126,7 @@ Single packs and suites may be mixed.
 e.g. `domain/auth-core` before `domain/auth-google`), and **tell the user** the
 full member composition being added and why (e.g. "group/auth selected — adds
 domain/auth-core, domain/auth-google, domain/auth-github"). Record the group
-selection separately (see P7) in addition to its members.
+selection separately (see P4) in addition to its members.
 
 Then resolve dependencies from each selected pack's metadata (both from single
 picks and from group members):
@@ -116,58 +139,15 @@ picks and from group members):
 Record: the selected group suite(s) with their member composition, plus the final
 domain pack set, including transitive additions marked "required by <pack>".
 
-### P4 — Constraints
+### P4 — Inject
 
-Goal: hard rules for SPEC.md sections 5–8. Ask (1–3, merge where natural):
-1. Security red lines beyond the defaults? (recommend: adopt the red lines from the
-   selected packs' pitfalls; default: pack red lines + "never commit secrets")
-2. Offline/online policy and platform rules? (default: none beyond pack guidance)
-3. Explicit out-of-scope items? (default: none)
+Execute the assembly procedure below, then report. There is no constraints /
+first-feature / merged-verification-route phase — those produced the removed
+`SPEC.md` / `feature_list.json` / `docs/verify.md` artifacts. Verification
+knowledge travels with each pack's `verify.md` into the vault, and AGENTS.md
+routes to it.
 
-Record: constraints, red lines, out-of-scope list.
-
-### P5 — First feature
-
-Goal: seed `feature_list.json` with **real entries, not placeholders**. Ask:
-1. What is the concrete first feature? (recommend the smallest end-to-end slice of
-   the stated purpose)
-2. Acceptance criteria — at least one concrete, checkable criterion? (propose a
-   draft for confirmation)
-
-Steer the first feature toward a **runnable slice**: its automated verification
-must exercise behavior (build, tests against running code, server boot) — not
-restate documentation. A contract- or doc-only feature whose test merely
-re-asserts its own content proves nothing; fold contract definition into the
-feature that implements it instead.
-
-When acceptance criteria name concrete artifacts a selected pack has a **strong
-convention** about (route paths, error-envelope shape, storage location, naming),
-write them consistent with that convention so the implementer is not forced to
-reconcile a conflict. Example: if the backend pack mandates an `/api/v1` prefix,
-write the criterion as `POST /api/v1/auth/google`, not `POST /auth/google`.
-Prefer routing the detail to the pack ("the sign-in endpoint per
-`docs/stacks/<id>/`") over hard-coding a value the pack will contradict.
-
-If the feature spans multiple stacks or is too large for one pass, decompose it
-into 2–4 features with `depends_on` ordering and confirm the split. Each feature
-gets: id (F001…), title, status `planned`, priority, depends_on, pack_refs (the
-selected packs it draws on), acceptance_criteria, verification (manual + automated),
-files_expected.
-
-### P6 — Verification route
-
-Derive the route — do not invent it: read each selected pack's `verify.md` and the
-stack packs' build/test commands, merge into a per-feature and project-level route
-(automated commands + manual checks). Present the merged route and ask the user to
-confirm or amend (default: as derived).
-
-Record: confirmed route → feeds `docs/verify.md` and each feature's `verification`.
-
-### P7 — Generate
-
-Execute the assembly procedure below, then report.
-
-## Pack discovery & trust (enforced at P2/P3 and P7)
+## Pack discovery & trust (enforced at P2/P3 and P4)
 
 The index scans three roots; on id collision the most specific wins
 (**project > user > builtin**): builtin `$POLYRIG_ROOT/packs/`, user
@@ -193,54 +173,63 @@ non-empty, announce each entry to the user before selection, in this format:
 **Staleness rule:** if a selected pack's `last_reviewed` is older than **180 days**
 (vs. today), warn the user before assembly and note that its knowledge may be stale.
 
-## P7 assembly procedure
+## P4 assembly procedure
 
-Work inside `<target>`; all generated content in English.
+Work inside `<target>`; all injected content in English. PolyRig only ever writes
+inside `<target>/.polyrig/` and the managed block of `<target>/AGENTS.md` /
+`<target>/CLAUDE.md` — **never** any other root file, and **never** `.harness/`.
 
 **a. Online dependency verification.** For each selected pack that has a
 `deps.yaml`: execute each entry's `lookup` strategy (WebSearch with the given
 query; WebFetch the `official_sources`). Record per dependency: resolved version,
 resolved-at date, source URL actually consulted, confidence (high/medium/low with
-justification), and a re-check action. If the user declines online verification,
-record `confidence: unverified` and say so in the final report.
+justification), and a re-check action → written to `.polyrig/deps.resolved.md`. If
+the user declines online verification, record `confidence: unverified` and say so.
 
-**b. Copy pack knowledge (physical copy — knowledge travels with the repo).**
-- stack packs → `<target>/docs/stacks/<short-id>/` (short-id = id without the
-  `stack/` prefix), domain packs → `<target>/docs/domains/<short-id>/`.
-- Copy `knowledge/*.md` (preserve the `per-stack/` subdirectory when present,
-  otherwise flatten) plus the pack's `verify.md`.
-- Copy `references/sources.md` as `sources.md` in the same target doc directory:
-  stack packs → `<target>/docs/stacks/<short-id>/sources.md`, domain packs →
-  `<target>/docs/domains/<short-id>/sources.md`.
-- Do **NOT** copy or run pack `scripts/` unless the trust table above permits it
-  and (for user packs) the user explicitly confirmed.
+**b. Copy the pack into the vault (physical copy — knowledge travels with the
+repo, preserving the pack's own directory structure).**
+- stack packs → `<target>/.polyrig/vault/stacks/<short-id>/` (short-id = id without
+  the `stack/` prefix), domain packs → `<target>/.polyrig/vault/domains/<short-id>/`.
+- **Mirror the pack's directory structure verbatim** — do NOT flatten or rename.
+  Copy `knowledge/` (with its `per-stack/` subdirectory intact), `references/`
+  (keep `references/sources.md` at `references/sources.md`), `verify.md`, and
+  `deps.yaml` if present, each at the same relative path under the vault pack dir.
+  Rationale: the vault copy is a faithful mirror of the pack, so paths, cross-file
+  links, and provenance stay stable and the pack is recognisable/upgradable.
+- **Omit only `pack.yaml`** — its metadata is recorded in `.polyrig/manifest.json`
+  (`selected_packs[]`), so it is redundant inside the vault.
+- **If the pack carries `skills/`** (opt-in, decision C): the mirror copy already
+  brings `skills/` across at `.polyrig/vault/<stacks|domains>/<short-id>/skills/`.
+  This is the skill source of truth; `polyrig skills inject` later symlinks from
+  here into the project's agent trigger directories. Copying it here does **not**
+  activate anything — injection is a separate, explicit step.
+- **If the pack carries `scripts/`** (opt-in, decision D): the mirror copy brings
+  `scripts/` across as **data** — it is example/reference material for the agent to
+  read. PolyRig **never runs** a copied pack script and never symlinks it into a
+  trigger directory; there is no `.polyrig/tools/`. (This supersedes the old "do
+  not copy scripts" rule: scripts now travel as read-only data, still never executed.)
 
-**c. Instantiate templates** from `$POLYRIG_ROOT/skill/polyrig/templates/`,
-filling every placeholder from interview answers and removing all `polyrig:` comments:
-- `SPEC.md` — P1–P4 decisions **with rationale in the user's own terms**.
-- `AGENTS.md` — routing rows for **every** copied doc directory + the hard rules
-  from the template kept **verbatim**.
-- `CLAUDE.md` — thin pointer to AGENTS.md, zero duplicated content.
-- `feature_list.json` — the real P5 features; must validate against
-  `$POLYRIG_ROOT/schemas/feature_list.schema.json`.
-- `docs/verify.md` — the merged P6 route.
-- `deps.resolved.md` — step-a results, one dated entry per dependency.
-- `init.plan.md` first, then `init.sh` — init.sh stays within the template's safe
-  operations (mkdir -p / touch / echo, plus the template's guarded `git init` when
-  the target is not already inside a repository; no installs, no build-file edits,
-  no remote fetches, no commits); everything non-trivial goes into init.plan.md as
-  manual follow-ups — including the first commit, which stays manual.
+**c. Write `.polyrig/deps.resolved.md`** from the step-a results (one dated entry
+per dependency), instantiating `$POLYRIG_ROOT/skill/polyrig/templates/deps.resolved.md`
+and removing all `polyrig:` comments.
 
-**d. Write `.polyrig/manifest.json`** conforming to
+**d. Inject the AGENTS.md / CLAUDE.md managed block** (see "Managed-block
+injection" below). The block is **pure routing only** — no red lines, no strong
+rules, no decision-tree text. Instantiate from
+`$POLYRIG_ROOT/skill/polyrig/templates/AGENTS.md` and `.../CLAUDE.md`, filling one
+"MUST read" routing line per copied vault directory, plus deps.resolved and
+manifest routing.
+
+**e. Write `.polyrig/manifest.json`** conforming to
 `$POLYRIG_ROOT/schemas/manifest.schema.json`. Delete the template's `$comment` key.
 Field translation: the index script emits overrides as `winner_source`/`loser_source`
 — the manifest schema requires **`winning_source`/`losing_source`**; translate when
-writing (also fill `winning_path` and `carries_scripts` from the index). Per selected
-pack compute one checksum over its copied files, including copied `sources.md`,
-run from `<target>`:
+writing (also fill `winning_path` and `carries_scripts` from the index). Set each
+pack's `copied_to` to its `.polyrig/vault/...` path. Per selected pack compute one
+checksum over its copied files, including copied `sources.md`, run from `<target>`:
 
 ```bash
-find docs/<stacks|domains>/<short-id> -type f | LC_ALL=C sort | xargs shasum -a 256 | shasum -a 256 | cut -d" " -f1
+find .polyrig/vault/<stacks|domains>/<short-id> -type f | LC_ALL=C sort | xargs shasum -a 256 | shasum -a 256 | cut -d" " -f1
 ```
 
 Record it as `"sha256:<that 64-hex digest>"`.
@@ -255,34 +244,71 @@ individually in `selected_packs[]` (unchanged); `selected_groups[]` records that
 they arrived as a group so a future upgrade can treat them as a unit. Packs the
 user picked singly (not via a group) do **not** appear in `selected_groups[]`.
 
-**e. Report and hand off.** List: every file written, every override announced,
+**f. Report and hand off.** List: every file written, every override announced,
 every staleness warning, every unverified dependency. Then instruct the user:
 
-> Open a FRESH session in the target project and say: "read AGENTS.md and
-> implement the first feature." The generated repo carries everything needed —
-> no verbal context required.
+> Open a FRESH session in the target project and say: "read AGENTS.md". Before any
+> task, read the routed `.polyrig/vault/` knowledge for that area and obey its red
+> lines; check dependency versions in `.polyrig/deps.resolved.md`. The repo carries
+> the experience — no verbal context required.
+
+## Managed-block injection (AGENTS.md / CLAUDE.md)
+
+Both files carry the **same** PolyRig managed block, delimited exactly as
+`scripts/link-skill.mjs` does (keep the markers identical repo-wide):
+
+```
+<!-- BEGIN POLYRIG MANAGED BLOCK -->
+...pure routing content...
+<!-- END POLYRIG MANAGED BLOCK -->
+```
+
+**Block content = routing only** (never inline experience):
+1. Injection declaration + pack list (id + version) and where each pack's knowledge
+   lives under `.polyrig/vault/`.
+2. Per pack, one **"MUST read"** routing line: before a task touching that area
+   (e.g. "Android build / auth flow"), MUST read the matching
+   `.polyrig/vault/<type>s/<short-id>/` (its `knowledge/*.md` and `verify.md`;
+   `references/sources.md` for provenance) — this points at the entry to the red
+   lines / strong rules / verification, it does **not** copy their content.
+3. Dependency routing: check `.polyrig/deps.resolved.md` for versions/strategy;
+   re-verify online before adding/upgrading a dependency if the snapshot is stale.
+4. Audit routing: pack/version/checksum in `.polyrig/manifest.json`.
+
+**Injection rules (incremental, idempotent, non-destructive)** — same semantics as
+link-skill.mjs's `upsertManagedBlock`:
+- Read the target `AGENTS.md` if it exists and locate `BEGIN`/`END`:
+  - markers present → **replace only** the content between them; user content
+    outside is untouched.
+  - markers absent → **append** the whole block at end of file (blank-line separated).
+  - file absent (cold-start) → **create** it with the block.
+- **Idempotent:** re-injecting identical content is a no-op.
+- **CLAUDE.md is the synonym entry:** write the **same** block content. Cold-start
+  and incremental both write the identical block.
+- **Non-destructive boundary:** only ever write the AGENTS.md/CLAUDE.md managed-block
+  span and inside `.polyrig/`; never touch other root files, never touch `.harness/`.
 
 ## Failure & edge handling
 
-- **Target dir not empty:** list what exists and ask before writing anything.
-  Never overwrite without consent; if a file to generate already exists and the
-  user does not consent to replacing it, write yours as `<name>.proposed` instead.
+- **Target dir not empty:** for **incremental injection** this is **expected** —
+  do not block. Merge the AGENTS.md/CLAUDE.md managed block (preserving content
+  outside the markers) and write only under `.polyrig/`. Never overwrite a user's
+  non-managed content.
 - **No compatible domain packs:** say so and proceed stack-only (skip domain copy).
 - **User skips online verification:** proceed, mark every affected entry in
-  `deps.resolved.md` as `confidence: unverified`, and state this in the report.
+  `.polyrig/deps.resolved.md` as `confidence: unverified`, and state this in the report.
 
-## Post-generate self-check (before declaring success)
+## Post-inject self-check (before declaring success)
 
 Running `validate-pack.mjs` is NOT needed here — selected packs were already
-validated. Instead validate the two generated JSON artifacts against their schemas:
+validated. Instead validate the generated manifest against its schema:
 
 ```bash
 node "$POLYRIG_ROOT/scripts/validate-artifacts.mjs" <target>
 ```
 
-It checks `feature_list.json` and `.polyrig/manifest.json` against
-`$POLYRIG_ROOT/schemas/` — including any `selected_groups[]` you wrote (the
-manifest schema already covers the `id`/`version`/`lock` shape). Fix any
-violation before reporting success. If the script is unavailable (POLYRIG_ROOT
-could not be resolved), fall back to re-reading both files against the schemas'
-required fields by hand.
+It checks `.polyrig/manifest.json` against `$POLYRIG_ROOT/schemas/` — including any
+`selected_groups[]` you wrote (the manifest schema already covers the
+`id`/`version`/`lock` shape). Fix any violation before reporting success. If the
+script is unavailable (POLYRIG_ROOT could not be resolved), fall back to re-reading
+the manifest against the schema's required fields by hand.

@@ -50,9 +50,42 @@
       "default": [],
       "items": { "$ref": "#/$defs/override" },
       "description": "Discovery-root overrides that were detected and announced during assembly (project > user > builtin)."
+    },
+    "linked_skills": {
+      "type": "array",
+      "default": [],
+      "items": { "$ref": "#/$defs/linked_skill" },
+      "description": "Pack-carried skills that were injected (symlinked) into the project's agent trigger directories. Each entry records the source pack, the skill's original name, the actual symlink name (may differ after a collision rename), and the full symlink path for precise reclaim on uninstall."
     }
   },
   "$defs": {
+    "linked_skill": {
+      "type": "object",
+      "required": ["pack", "skill", "linked_as", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "pack": {
+          "type": "string",
+          "pattern": "^(stack|domain)/[a-z0-9-]+$",
+          "description": "Source pack id the skill came from."
+        },
+        "skill": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "The skill's original directory name inside the pack's skills/."
+        },
+        "linked_as": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "The actual symlink name in the trigger directory; equals skill unless renamed on collision."
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Full path of the created symlink, used for precise reclaim on uninstall."
+        }
+      }
+    },
     "selected_pack": {
       "type": "object",
       "required": ["id", "version", "source", "last_reviewed", "copied_to", "checksum"],
@@ -84,7 +117,7 @@
             "type": "string",
             "minLength": 1
           },
-          "description": "Target-project-relative paths the pack's knowledge was physically copied to, e.g. ['docs/domains/auth-google/']."
+          "description": "Target-project-relative paths the pack's knowledge was physically copied to, e.g. ['.polyrig/vault/domains/auth-google/']."
         },
         "checksum": {
           "type": "string",

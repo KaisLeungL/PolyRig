@@ -1,9 +1,9 @@
 # stack/android — Verification routes
 
 **Rule: a feature is not done until the relevant route below passes.** Never [Evidence: E017, E004, E011]
-set a feature to `verified` in `feature_list.json` on the strength of "it
+treat a feature as done on the strength of "it
 compiles" or a debug-only run. Record which routes ran and their outcomes in
-the feature's verification notes.
+the verification notes.
 
 ## Automated routes (run from the project root)
 

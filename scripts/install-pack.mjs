@@ -54,7 +54,7 @@ function fail(msg) {
 }
 
 function parseArgs(argv) {
-  const args = { _: [], replace: false, yes: false, allowDeprecated: false, all: false, group: false, single: false };
+  const args = { _: [], replace: false, yes: false, allowDeprecated: false, all: false, group: false, single: false, check: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dest') args.dest = argv[++i];
@@ -66,6 +66,7 @@ function parseArgs(argv) {
     else if (a === '--all') args.all = true;
     else if (a === '--group') args.group = true;
     else if (a === '--single') args.single = true;
+    else if (a === '--check') args.check = true;
     else if (a.startsWith('--')) fail(`unknown option '${a}'`);
     else args._.push(a);
   }
@@ -138,6 +139,19 @@ async function fetchJson(url, token) {
   const resp = await fetch(url, { headers: authHeaders(token) });
   if (!resp.ok) fail(`GET ${url} -> HTTP ${resp.status}`);
   return resp.json();
+}
+
+// Like fetchJson but never exits the process. Returns { ok, data, error }.
+// Used only by the read-only --check path so one pack's registry error does
+// not abort the whole --all report.
+async function tryFetchJson(url, token) {
+  try {
+    const resp = await fetch(url, { headers: authHeaders(token) });
+    if (!resp.ok) return { ok: false, data: null, error: `GET ${url} -> HTTP ${resp.status}` };
+    return { ok: true, data: await resp.json(), error: null };
+  } catch (err) {
+    return { ok: false, data: null, error: `GET ${url} -> ${err.message}` };
+  }
 }
 
 async function fetchMetadata(origin, orgSlug, type, name, version, token) {
@@ -571,19 +585,113 @@ async function updateOne(origin, destRoot, packId, args, token) {
   }
 }
 
+// Enumerate every pack under destRoot that carries a .polyrig-install.json.
+function listInstalledPackIds(destRoot) {
+  const ids = [];
+  for (const type of ['stack', 'domain']) {
+    const typeDir = join(destRoot, type);
+    if (!existsSync(typeDir)) continue;
+    for (const name of readdirSync(typeDir)) {
+      if (installedMeta(destRoot, type, name)) ids.push(`${type}/${name}`);
+    }
+  }
+  return ids;
+}
+
+// Read-only health synthesis for one installed pack. Never writes, never
+// downloads, never exits. Queries TWO sources (updates endpoint for freshness,
+// current-version install-metadata for lifecycle + sha256) and combines them
+// into a single headline by severity. Deliberately does NOT reuse updateOne's
+// up_to_date->NOOP shortcut, which masks a deprecated/removed current version.
+async function checkOne(origin, destRoot, packId, token) {
+  const [type, name] = packId.split('/');
+  const installed = installedMeta(destRoot, type, name);
+  if (!installed) return { id: packId, version: null, headline: 'not-installed', notes: [], errors: [] };
+
+  const orgSlug = orgSlugFromInstalled(installed, origin);
+  const cur = await tryFetchJson(metadataPath(origin, orgSlug, type, name, installed.version), token);
+  const upd = await tryFetchJson(updatesPath(origin, orgSlug, type, name, installed.version), token);
+
+  const errors = [];
+  if (!cur.ok) errors.push(cur.error);
+  if (!upd.ok) errors.push(upd.error);
+
+  const lifecycle = cur.ok ? (cur.data.status ?? 'unknown') : 'unknown';
+  const drift = cur.ok && cur.data.sha256 && installed.sha256 && cur.data.sha256 !== installed.sha256;
+
+  let freshness = 'unknown';
+  let newer = null;
+  if (upd.ok) {
+    if (upd.data.up_to_date) freshness = 'up-to-date';
+    else { freshness = 'upstream-newer'; newer = upd.data.latest?.version ?? null; }
+  }
+
+  const notes = [];
+  let headline;
+  if (lifecycle === 'removed') {
+    headline = 'removed';
+    if (freshness === 'upstream-newer' && newer) notes.push(`newer published: ${newer}`);
+  } else if (drift) {
+    headline = 'local-drift';
+    notes.push(`recorded ${installed.sha256} != registry ${cur.data.sha256}`);
+  } else if (lifecycle === 'deprecated') {
+    headline = 'deprecated';
+    if (freshness === 'upstream-newer' && newer) notes.push(`newer published: ${newer}`);
+  } else if (freshness === 'upstream-newer') {
+    headline = 'upstream-newer';
+    notes.push(`${installed.version} -> ${newer ?? '?'}`);
+  } else if (freshness === 'up-to-date' && lifecycle === 'published') {
+    headline = 'up-to-date';
+  } else {
+    headline = 'unknown';
+    for (const e of errors) notes.push(`registry error: ${e}`);
+  }
+
+  return { id: packId, version: installed.version, headline, notes, errors };
+}
+
+function printCheck(report) {
+  const token = report.headline.toUpperCase();
+  const at = report.version ? `@${report.version}` : '';
+  const detail = report.notes.length ? `  ${report.notes.join('; ')}` : '';
+  console.log(`CHECK ${report.id}${at}  ${token}${detail}`);
+}
+
+async function cmdCheck(origin, destRoot, args, token) {
+  console.log(`CHECK root: ${destRoot}`);
+  let ids;
+  if (args.all) {
+    ids = listInstalledPackIds(destRoot);
+    if (ids.length === 0) { console.log('CHECK no registry-installed packs found'); return; }
+  } else {
+    const packId = args._[0];
+    if (!packId || !/^(stack|domain)\/[a-z0-9-]+$/.test(packId)) {
+      fail('usage: update <stack|domain>/<name> --check | update --all --check');
+    }
+    ids = [packId];
+  }
+
+  const counts = {};
+  for (const id of ids) {
+    const report = await checkOne(origin, destRoot, id, token);
+    if (!args.all && report.headline === 'not-installed') {
+      fail(`${id} is not installed from the registry at ${destRoot}`);
+    }
+    printCheck(report);
+    counts[report.headline] = (counts[report.headline] ?? 0) + 1;
+  }
+
+  const parts = Object.entries(counts).map(([k, n]) => `${n} ${k}`);
+  console.log(`CHECK summary: ${ids.length} checked — ${parts.join(', ')}`);
+}
+
 async function cmdUpdate(args) {
   const origin = registryBase(args);
   const token = registryToken(args);
   const destRoot = resolve(args.dest ?? defaultDest());
+  if (args.check) return cmdCheck(origin, destRoot, args, token);
   if (args.all) {
-    const ids = [];
-    for (const type of ['stack', 'domain']) {
-      const typeDir = join(destRoot, type);
-      if (!existsSync(typeDir)) continue;
-      for (const name of readdirSync(typeDir)) {
-        if (installedMeta(destRoot, type, name)) ids.push(`${type}/${name}`);
-      }
-    }
+    const ids = listInstalledPackIds(destRoot);
     if (ids.length === 0) { console.log('NOOP no registry-installed packs found'); return; }
     for (const id of ids) await updateOne(origin, destRoot, id, args, token);
     return;

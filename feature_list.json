@@ -458,6 +458,127 @@
         "docs/plans/2026-07-06-polyrig-pack-group-implementation.md"
       ],
       "notes": "Protocol-side pack group feature (tasks 1-9). Scripts core (tasks 1-5), manifest schema (task 6), and groups/auth migration are green; tasks 7-9 add the /polyrig consume flow (selected_groups), polyrig-pack-author group authoring + dependency pre-scan, polyrig-pack-install group interaction contract, npm test wiring, and user docs. Registry-side joint upload/atomic publish is out of scope here and lands in polyrig-registry per the spec."
+    },
+    {
+      "id": "F018",
+      "title": "Repositioning + artifact relocation: experience injection into .polyrig/ (Decision A)",
+      "status": "implemented",
+      "priority": "p0",
+      "depends_on": ["F017"],
+      "pack_refs": [],
+      "acceptance_criteria": [
+        "PolyRig is repositioned from context-assembly to experience packaging + injection; SPEC.md, feature_list.json, init.plan.md, init.sh templates and schemas/feature_list.schema.json are removed (no target-project spec/state-machine/init artifacts)",
+        "pack knowledge relocates from <target>/docs/stacks|domains/ to <target>/.polyrig/vault/stacks|domains/<short-id>/; deps.resolved.md to .polyrig/deps.resolved.md; manifest copied_to points at .polyrig/vault/...",
+        "AGENTS.md/CLAUDE.md become pure-pointer managed blocks (BEGIN/END markers, incremental merge, never inline red lines/strong rules); cold-start creates, incremental injection merges into existing files; never touches root non-managed files or a host .harness/",
+        "skill/polyrig SKILL.md collapses the seven-phase interview to a four-phase injection flow (identity+mode detection, stack, domain/group, inject) and rewrites P4 assembly to vault landing + managed-block injection",
+        "validate-artifacts.mjs only validates .polyrig/manifest.json; doctor.mjs no longer checks feature_list.schema.json; product SPEC.md and its packaging references (package.json files, link-skill RUNTIME_RESOURCES, test-link-skill staging) are PRESERVED, not deleted",
+        "README (both), product SPEC.md, docs/architecture.md, docs/pack-protocol.md, docs/examples/golden-path-demo.md rewritten so KPI is 'injected experience applied correctly' not 'carry a feature to verified'"
+      ],
+      "verification": {
+        "manual": [
+          "Cold-start a temp dir and an existing-project dir with a host .harness/: only .polyrig/ + AGENTS/CLAUDE managed block written, .harness/ untouched, re-run idempotent"
+        ],
+        "automated": [
+          "npm test",
+          "node scripts/doctor.mjs",
+          "node scripts/validate-artifacts.mjs <target-with-only-.polyrig-manifest>"
+        ]
+      },
+      "files_expected": [
+        "skill/polyrig/SKILL.md",
+        "skill/polyrig/templates/AGENTS.md",
+        "skill/polyrig/templates/CLAUDE.md",
+        "skill/polyrig/templates/manifest.json",
+        "schemas/manifest.schema.json",
+        "scripts/validate-artifacts.mjs",
+        "scripts/test-validate-artifacts.mjs",
+        "scripts/doctor.mjs",
+        "SPEC.md",
+        "README.md",
+        "README.zh-CN.md",
+        "docs/architecture.md",
+        "docs/pack-protocol.md",
+        "docs/examples/golden-path-demo.md",
+        "docs/plans/2026-07-07-polyrig-artifact-relocation-spec.md",
+        "docs/plans/2026-07-07-polyrig-artifact-relocation-implementation.md"
+      ],
+      "notes": "Decision A from docs/plans/2026-07-07-polyrig-injection-and-freshness-exploration.md. Removed target-product SPEC.md/feature_list.json/init templates + feature_list schema; kept the repo-root product SPEC.md and its packaging refs. npm test green, doctor OK. SKILL.md flow is agent-driven (no automated test); verified by read-through + the existing staging/validate tests."
+    },
+    {
+      "id": "F019",
+      "title": "Pack freshness: install-pack.mjs update --check read-only health report (Decision B)",
+      "status": "implemented",
+      "priority": "p1",
+      "depends_on": ["F012"],
+      "pack_refs": [],
+      "acceptance_criteria": [
+        "install-pack.mjs gains update --check / update --all --check: a read-only, no-write path that never downloads and never mutates install records or pack dirs",
+        "each installed pack is synthesized into one of 5 states (up-to-date / upstream-newer(vX->vY) / deprecated / removed / local-drift) plus UNKNOWN on registry error, by querying TWO sources: the updates endpoint AND the current version's install-metadata (so deprecated/removed of the CURRENT version is not masked by the up_to_date->NOOP shortcut)",
+        "a single pack's registry error is non-fatal (--all --check keeps going, exits 0); the report prints CHECK lines + a CHECK summary",
+        "skill/polyrig-pack-install documents --check as a read-only health check needing no --yes; freshness judgement stays the pack author's job (client only compares versions)"
+      ],
+      "verification": {
+        "manual": [],
+        "automated": ["node scripts/test-install-pack.mjs", "npm test"]
+      },
+      "files_expected": [
+        "scripts/install-pack.mjs",
+        "scripts/test-install-pack.mjs",
+        "skill/polyrig-pack-install/SKILL.md",
+        "docs/plans/2026-07-07-polyrig-update-check-spec.md",
+        "docs/plans/2026-07-07-polyrig-update-check-implementation.md"
+      ],
+      "notes": "Decision B. 22 new --check checks (all 5 states + UNKNOWN + read-only + private + not-installed) in test-install-pack.mjs; the key non-obvious case (DEPRECATED reported even when the updates endpoint 404s) is covered. No cache/TTL/hook/version-state-file (explicitly excluded)."
+    },
+    {
+      "id": "F020",
+      "title": "Packs may carry skills (injected) and scripts (data) (Decisions C + D)",
+      "status": "implemented",
+      "priority": "p1",
+      "depends_on": ["F018"],
+      "pack_refs": [],
+      "acceptance_criteria": [
+        "validate-pack.mjs structure-only validation of skills/: each skills/<name>/ has SKILL.md whose frontmatter name equals the directory name plus a non-empty description; non-directory entries and empty skills/ fail; packs without skills/ still pass",
+        "build-pack-index.mjs emits has_skills; schemas/manifest.schema.json adds linked_skills[] (pack/skill/linked_as/target, additionalProperties:false)",
+        "inject-pack-skills.mjs inject: detects the project's existing agent skill dirs (claude-code/codex only), original-name project-level symlinks from .polyrig/vault/<type>/<short-id>/skills/<skill> into them, registers linked_skills without clobbering Track A manifest fields, idempotent; collision -> skip/rename; same-name across two packs errors; empty -> --create; never writes cursor/gemini/opencode",
+        "inject-pack-skills.mjs reclaim: deletes only symlinks resolving under .polyrig/vault/ by exact target, clears those linked_skills entries, keeps other fields, idempotent, and refuses to delete a real (non-managed) dir at a recorded target",
+        "polyrig skills inject|reclaim dispatches via polyrig.mjs; Decision C2 trust (symlink=live, git merge is the gate, no confirm ledger); Decision D: pack scripts/ copied into vault as read-only data, never symlinked/executed",
+        "docs/pack-protocol.md iron rule changed from 'a pack is never a skill' to 'data by default, may opt-in to carry skills/scripts'; READMEs, architecture.md, polyrig-pack-author SKILL + contract updated"
+      ],
+      "verification": {
+        "manual": [
+          "Read-through: pack-protocol Pack-carried skills section, pack-author skills/scripts opt-in guidance"
+        ],
+        "automated": [
+          "node scripts/test-validate-pack-skills.mjs",
+          "node scripts/test-build-pack-index.mjs",
+          "node scripts/test-validate-artifacts.mjs",
+          "node scripts/test-inject-pack-skills.mjs",
+          "npm test"
+        ]
+      },
+      "files_expected": [
+        "scripts/lib/validate.mjs",
+        "scripts/test-validate-pack-skills.mjs",
+        "scripts/build-pack-index.mjs",
+        "scripts/test-build-pack-index.mjs",
+        "schemas/manifest.schema.json",
+        "scripts/test-validate-artifacts.mjs",
+        "scripts/inject-pack-skills.mjs",
+        "scripts/test-inject-pack-skills.mjs",
+        "scripts/polyrig.mjs",
+        "skill/polyrig/SKILL.md",
+        "docs/pack-protocol.md",
+        "README.md",
+        "README.zh-CN.md",
+        "docs/architecture.md",
+        "skill/polyrig-pack-author/SKILL.md",
+        "skill/polyrig-pack-author/references/pack-authoring-contract.md",
+        "package.json",
+        "docs/plans/2026-07-07-polyrig-pack-skills-spec.md",
+        "docs/plans/2026-07-07-polyrig-pack-skills-implementation.md"
+      ],
+      "notes": "Decisions C + D. C is the bulk (structure validation, has_skills, linked_skills, inject/reclaim script, subcommand, docs); D is near-zero (scripts copied to vault as data by the SKILL.md P4 step, never executed). Platform scope is claude-code/codex only (the only two with a skills dir; Claude Code scans one level so symlinks are flat). 27 inject/reclaim checks + skills-structure checks green."
     }
   ]
 }

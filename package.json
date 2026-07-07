@@ -30,7 +30,7 @@
     "access": "public"
   },
   "scripts": {
-    "test": "node scripts/test-link-skill.mjs && node scripts/test-build-pack-index.mjs && node scripts/test-validate-pack-evidence.mjs && node scripts/test-validate-pack-verify-tools.mjs && node scripts/test-validate-group.mjs && node scripts/test-pack-group.mjs && node scripts/test-validate-artifacts.mjs && node scripts/test-install-pack.mjs",
+    "test": "node scripts/test-link-skill.mjs && node scripts/test-build-pack-index.mjs && node scripts/test-validate-pack-evidence.mjs && node scripts/test-validate-pack-verify-tools.mjs && node scripts/test-validate-pack-skills.mjs && node scripts/test-validate-group.mjs && node scripts/test-pack-group.mjs && node scripts/test-validate-artifacts.mjs && node scripts/test-install-pack.mjs && node scripts/test-inject-pack-skills.mjs",
     "doctor": "node scripts/doctor.mjs"
   }
 }

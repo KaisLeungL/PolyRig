@@ -1,6 +1,6 @@
 # Next.js frontend — verification routes
 
-Standing rule: a feature is not done until the relevant routes below pass; never mark a feature `verified` in `feature_list.json` on the strength of "the code looks right". [Evidence: E019]
+Standing rule: a feature is not done until the relevant routes below pass; never treat a feature as done on the strength of "the code looks right". [Evidence: E019]
 Commands below use `pnpm` as the example package manager and Next.js script
 names; substitute the project's resolved package manager and scripts 1:1 if they
 differ (see `deps.yaml`). [Evidence: E108]

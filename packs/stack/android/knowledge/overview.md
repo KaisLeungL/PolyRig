@@ -126,5 +126,5 @@ State the *procedure*, not the numbers — the numbers rot:
    level that satisfies it. For a brand-new product with no install base,
    bias toward a higher floor: each API level dropped from minSdk buys
    real users but costs compat branches and desugaring surface.
-3. Record the chosen pair and its rationale in the target project's SPEC.md;
+3. Record the chosen pair and its rationale in the project's own docs;
    treat any later change to minSdk as a reviewed decision, not a build tweak.

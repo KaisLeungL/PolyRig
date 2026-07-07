@@ -11,10 +11,13 @@
 //                 (default when no subcommand is given, for back-compat with
 //                 `npx polyrig` / `npx polyrig install`.)
 //   pack-group    Bundle a group + its members into an upload .tar.gz.
+//   skills        Inject or reclaim pack-carried skills for a project
+//                 (`polyrig skills inject|reclaim ...`).
 //
 // Anything after the subcommand is forwarded verbatim to the target script,
 // so all existing flags keep working (e.g. `polyrig install --platform codex`,
-// `polyrig pack-group groups/auth --out /tmp/auth.tar.gz`).
+// `polyrig pack-group groups/auth --out /tmp/auth.tar.gz`,
+// `polyrig skills inject --project . --yes`).
 
 import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
@@ -25,6 +28,7 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SUBCOMMANDS = {
   install: 'link-skill.mjs',
   'pack-group': 'pack-group.mjs',
+  skills: 'inject-pack-skills.mjs',
 };
 
 function help() {
@@ -35,6 +39,8 @@ commands:
                 options: [--platform <name|all>] [--copy] [--force] [--home <dir>]
   pack-group    Bundle a group + its members into an upload .tar.gz.
                 usage: polyrig pack-group <group.yaml | group-dir> [--roots <dir,...>] [--out <file>]
+  skills        Inject or reclaim pack-carried skills for a project.
+                usage: polyrig skills <inject|reclaim> [--project <dir>] [--yes] ...
 
 Run \`polyrig <command> --help\` for command-specific options.`);
 }

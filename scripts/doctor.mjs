@@ -43,7 +43,7 @@ if (Number.isInteger(major) && major >= 18) {
 
 // --- 2. Repository layout ---------------------------------------------------
 console.log('repository layout');
-for (const schema of ['pack.schema.json', 'feature_list.schema.json', 'manifest.schema.json']) {
+for (const schema of ['pack.schema.json', 'manifest.schema.json']) {
   const p = join(REPO_ROOT, 'schemas', schema);
   if (existsSync(p)) ok(`schemas/${schema}`);
   else fail(`schemas/${schema} is missing`);

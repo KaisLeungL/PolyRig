@@ -21,7 +21,7 @@
 //
 // Output shape: { generated_at, roots, packs, groups, overrides }. Each pack
 // carries id, type, version, summary, last_reviewed, requires, conflicts,
-// provides, stacks, source, path (absolute), has_scripts. Each group is scanned
+// provides, stacks, source, path (absolute), has_scripts, has_skills. Each group is scanned
 // from the groups/ directory that sits PARALLEL to each packs root (e.g.
 // <repo>/groups alongside <repo>/packs) at groups/<name>/group.yaml, and carries
 // id, version, summary, last_reviewed, members ([{id, version}]),
@@ -157,6 +157,7 @@ for (const root of roots) {
       source: root.source,
       path: resolve(dir),
       has_scripts: isDir(join(dir, 'scripts')) && dirHasFiles(join(dir, 'scripts')),
+      has_skills: isDir(join(dir, 'skills')) && dirHasFiles(join(dir, 'skills')),
     };
     const existing = byId.get(meta.id);
     if (existing) {

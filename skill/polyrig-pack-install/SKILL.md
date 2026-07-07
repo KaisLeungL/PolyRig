@@ -70,11 +70,25 @@ node "$POLYRIG_ROOT/scripts/install-pack.mjs" install <canonical-url> [--dest <d
 # Update one pack, or everything installed from the registry
 node "$POLYRIG_ROOT/scripts/install-pack.mjs" update <type>/<name> [--dest <dir>] --yes
 node "$POLYRIG_ROOT/scripts/install-pack.mjs" update --all [--dest <dir>] --yes
+
+# Read-only health check: report status of one pack, or everything installed
+node "$POLYRIG_ROOT/scripts/install-pack.mjs" update <type>/<name> --check [--dest <dir>]
+node "$POLYRIG_ROOT/scripts/install-pack.mjs" update --all --check [--dest <dir>]
 ```
 
 Default install root is `~/.polyrig/packs/`. A project-level root
 (`<project>/.polyrig/packs/` via `--dest`) is used only when the user
 explicitly chooses it.
+
+`--check` is a **read-only** health report: for each installed pack it prints one
+of `UP-TO-DATE` / `UPSTREAM-NEWER` / `DEPRECATED` / `REMOVED` / `LOCAL-DRIFT`
+(or `UNKNOWN` when the registry can't be reached), then a `CHECK summary` line.
+It never downloads, never writes, and does **not** need `--yes` — run it freely
+to read pack status (no confirmation required). Freshness judgement belongs to
+the pack author (a new published version means "this pack moved on"); the client
+only compares version numbers + lifecycle status, it does not judge knowledge
+correctness. A single pack's registry error is non-fatal: `--all --check` keeps
+going and still exits 0.
 
 ## Pack groups
 

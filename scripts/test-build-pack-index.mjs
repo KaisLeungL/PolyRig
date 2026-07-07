@@ -11,7 +11,7 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-function writeMinimalPack(root, id, summary) {
+function writeMinimalPack(root, id, summary, { withSkills = false } = {}) {
   const [, type, name] = id.match(/^(stack|domain)\/(.+)$/);
   const dir = join(root, type, name);
   mkdirSync(join(dir, 'knowledge'), { recursive: true });
@@ -33,6 +33,11 @@ function writeMinimalPack(root, id, summary) {
   ].join('\n'));
   writeFileSync(join(dir, 'knowledge', 'overview.md'), '# Overview\n');
   writeFileSync(join(dir, 'verify.md'), '# Verify\n');
+  if (withSkills) {
+    mkdirSync(join(dir, 'skills', 'demo-skill'), { recursive: true });
+    writeFileSync(join(dir, 'skills', 'demo-skill', 'SKILL.md'),
+      '---\nname: demo-skill\ndescription: A demo.\n---\n# demo-skill\n');
+  }
 }
 
 // Write <layer>/groups/<name>/group.yaml from a member id list. `layer` is the
@@ -60,7 +65,7 @@ function writeGroup(layer, name, { version = '0.1.0', summary = 'Demo group', me
 const home = mkdtempSync(join(tmpdir(), 'polyrig-pack-index-'));
 const projectDir = mkdtempSync(join(tmpdir(), 'polyrig-pack-index-proj-'));
 try {
-  writeMinimalPack(join(home, '.polyrig', 'packs'), 'domain/new-user-root', 'New user root pack');
+  writeMinimalPack(join(home, '.polyrig', 'packs'), 'domain/new-user-root', 'New user root pack', { withSkills: true });
   writeMinimalPack(join(home, '.claude', 'polyrig-packs'), 'domain/legacy-user-root', 'Legacy user root pack');
 
   // A group in the neutral user layer (groups/ sits parallel to packs/), plus a
@@ -84,6 +89,11 @@ try {
   const ids = new Set(index.packs.map((pack) => pack.id));
   assert(ids.has('domain/new-user-root'), 'new ~/.polyrig/packs root should be scanned');
   assert(ids.has('domain/legacy-user-root'), 'legacy ~/.claude/polyrig-packs root should still be scanned');
+
+  const withSkills = index.packs.find((p) => p.id === 'domain/new-user-root');
+  const noSkills = index.packs.find((p) => p.id === 'domain/legacy-user-root');
+  assert(withSkills.has_skills === true, `pack with skills/ should have has_skills:true, got ${withSkills.has_skills}`);
+  assert(noSkills.has_skills === false, `pack without skills/ should have has_skills:false, got ${noSkills.has_skills}`);
 
   assert(Array.isArray(index.groups), 'index must carry a groups array parallel to packs');
   const demo = index.groups.find((g) => g.id === 'group/demo');

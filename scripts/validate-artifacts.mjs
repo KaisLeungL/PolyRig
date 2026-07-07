@@ -2,7 +2,6 @@
 // validate-artifacts.mjs — validate the JSON artifacts PolyRig generated into
 // a target project against this repository's schemas:
 //
-//   <target>/feature_list.json      vs schemas/feature_list.schema.json
 //   <target>/.polyrig/manifest.json vs schemas/manifest.schema.json
 //
 // Usage:
@@ -28,7 +27,6 @@ if (args.length !== 1) usage('expected exactly one <target-dir> argument');
 
 const target = resolve(args[0]);
 const artifacts = [
-  { rel: 'feature_list.json', schema: 'feature_list.schema.json' },
   { rel: join('.polyrig', 'manifest.json'), schema: 'manifest.schema.json' },
 ];
 

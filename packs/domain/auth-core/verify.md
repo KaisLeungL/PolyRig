@@ -7,6 +7,15 @@ Legend: **[A]** automated (say what kind of test), **[M]** manual/documented
 inspection. Every item must be checked; record outcomes in the feature's [Evidence: E011]
 `verification` notes before setting it `verified`.
 
+**Scope by chosen session strategy.** Sections 3 and 4 below include items that
+are predicated on the design *having* refresh tokens and rotation/reuse
+detection. A feature whose session strategy issues no refresh token (e.g. a
+single opaque server-side session for an MVP) has nothing to test there:
+mark each inapplicable item **N/A** in the notes with the one-line reason
+(which strategy was chosen, per `knowledge/overview.md` §4–§5), rather than
+skipping it silently. Every item is checked **or** explicitly marked N/A with [Evidence: E004, E005]
+a reason; an inapplicable item is never quietly dropped from the list. [Evidence: E004, E005]
+
 ## 1. Happy path
 
 - [ ] **[M]** Full sign-in completes end to end on a real client: provider flow

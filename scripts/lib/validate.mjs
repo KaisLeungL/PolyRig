@@ -16,7 +16,7 @@
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseYamlFile, YamlError } from './miniyaml.mjs';
+import { parseYaml, parseYamlFile, YamlError } from './miniyaml.mjs';
 
 /** Absolute path to the PolyRig repository root (parent of scripts/). */
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -162,6 +162,19 @@ function isDir(p) {
 
 function isFile(p) {
   try { return statSync(p).isFile(); } catch { return false; }
+}
+
+// Extract and parse the leading `---\n...\n---` YAML frontmatter block of a
+// Markdown file. Returns the parsed mapping, or null if absent/unparseable.
+function parseFrontmatter(text) {
+  const m = text.match(/^---\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n|$)/);
+  if (!m) return null;
+  try {
+    const parsed = parseYaml(m[1], '<frontmatter>');
+    return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -521,6 +534,44 @@ export function validatePackDir(packDir, { roots = [join(REPO_ROOT, 'packs')] } 
         if (!isFile(join(perStackDir, `${stack}.md`))) {
           violations.push(`knowledge/per-stack/: declared stack '${stack}' has no per-stack/${stack}.md`);
         }
+      }
+    }
+  }
+
+  // --- skills/: optional, opt-in; STRUCTURE-ONLY validation ----------------
+  // A pack MAY carry skills/<name>/SKILL.md (injected as project-level symlinks
+  // by `polyrig skills inject`). We check structure only — never skill content
+  // or safety (that is registry review + git merge's job). See decision C4.
+  const skillsDir = join(dir, 'skills');
+  if (isDir(skillsDir)) {
+    const entries = readdirSync(skillsDir, { withFileTypes: true });
+    const skillDirs = [];
+    for (const entry of entries) {
+      if (entry.isDirectory()) skillDirs.push(entry.name);
+      else violations.push(`skills/: contains non-directory entry ${entry.name}`);
+    }
+    if (skillDirs.length === 0) {
+      violations.push('skills/: present but contains no skill directory');
+    }
+    for (const skillName of skillDirs) {
+      const skillMdPath = join(skillsDir, skillName, 'SKILL.md');
+      if (!isFile(skillMdPath)) {
+        violations.push(`skills/${skillName}/: missing SKILL.md`);
+        continue;
+      }
+      const fm = parseFrontmatter(readFileSync(skillMdPath, 'utf8'));
+      const label = `skills/${skillName}/SKILL.md`;
+      if (!fm) {
+        violations.push(`${label}: missing or unparseable frontmatter`);
+        continue;
+      }
+      if (typeof fm.name !== 'string' || !/^[a-z0-9][a-z0-9-]*$/.test(fm.name)) {
+        violations.push(`${label}: frontmatter 'name' missing or not a valid slug`);
+      } else if (fm.name !== skillName) {
+        violations.push(`${label}: frontmatter name '${fm.name}' does not match directory '${skillName}'`);
+      }
+      if (typeof fm.description !== 'string' || fm.description.trim() === '') {
+        violations.push(`${label}: frontmatter 'description' missing or empty`);
       }
     }
   }

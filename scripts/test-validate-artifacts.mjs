@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Smoke tests for validate-artifacts.mjs: generated feature_list.json and
-// .polyrig/manifest.json must validate against schemas/ (including the
-// $ref-based feature definition and format checks the subset validator covers).
+// Smoke tests for validate-artifacts.mjs: the generated .polyrig/manifest.json
+// must validate against schemas/ (including the format checks and the
+// selected_groups $def the subset validator covers).
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -11,28 +11,6 @@ import { REPO_ROOT } from './lib/validate.mjs';
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
-}
-
-function validFeatureList() {
-  return {
-    project: 'Fixture',
-    version: '0.1.0',
-    generated_at: '2026-07-04',
-    features: [
-      {
-        id: 'F001',
-        title: 'First feature',
-        status: 'planned',
-        priority: 'p0',
-        depends_on: [],
-        pack_refs: ['stack/android'],
-        acceptance_criteria: ['One checkable criterion.'],
-        verification: { manual: ['Check it.'], automated: ['./gradlew test'] },
-        files_expected: [],
-        notes: '',
-      },
-    ],
-  };
 }
 
 function validManifest() {
@@ -46,7 +24,7 @@ function validManifest() {
         version: '0.1.0',
         source: 'builtin',
         last_reviewed: '2026-07-04',
-        copied_to: ['docs/stacks/android/'],
+        copied_to: ['.polyrig/vault/stacks/android/'],
         checksum: `sha256:${'a'.repeat(64)}`,
       },
     ],
@@ -54,10 +32,9 @@ function validManifest() {
   };
 }
 
-function writeTarget(root, name, featureList, manifest) {
+function writeTarget(root, name, manifest) {
   const dir = join(root, name);
   mkdirSync(join(dir, '.polyrig'), { recursive: true });
-  writeFileSync(join(dir, 'feature_list.json'), JSON.stringify(featureList, null, 2));
   writeFileSync(join(dir, '.polyrig', 'manifest.json'), JSON.stringify(manifest, null, 2));
   return dir;
 }
@@ -82,28 +59,10 @@ function runValidate(targetDir) {
 
 const root = mkdtempSync(join(tmpdir(), 'polyrig-artifacts-'));
 try {
-  // Fully valid pair passes.
+  // A valid manifest passes.
   {
-    const result = runValidate(writeTarget(root, 'valid', validFeatureList(), validManifest()));
+    const result = runValidate(writeTarget(root, 'valid', validManifest()));
     assert(result.ok, `valid: unexpectedly failed\n${result.output}`);
-  }
-
-  // Bad feature status is caught through the $ref'd feature definition.
-  {
-    const fl = validFeatureList();
-    fl.features[0].status = 'done';
-    const result = runValidate(writeTarget(root, 'bad-status', fl, validManifest()));
-    assert(!result.ok, `bad-status: unexpectedly passed\n${result.output}`);
-    assert(result.output.includes('/features/0/status'), `bad-status: wrong violation\n${result.output}`);
-  }
-
-  // Unknown feature field is rejected (additionalProperties: false).
-  {
-    const fl = validFeatureList();
-    fl.features[0].owner = 'me';
-    const result = runValidate(writeTarget(root, 'extra-field', fl, validManifest()));
-    assert(!result.ok, `extra-field: unexpectedly passed\n${result.output}`);
-    assert(result.output.includes("unknown field 'owner'"), `extra-field: wrong violation\n${result.output}`);
   }
 
   // Malformed manifest checksum and date-time are caught.
@@ -111,7 +70,7 @@ try {
     const m = validManifest();
     m.selected_packs[0].checksum = 'sha256:short';
     m.generated_at = '2026-07-04 13:55';
-    const result = runValidate(writeTarget(root, 'bad-manifest', validFeatureList(), m));
+    const result = runValidate(writeTarget(root, 'bad-manifest', m));
     assert(!result.ok, `bad-manifest: unexpectedly passed\n${result.output}`);
     assert(result.output.includes('/selected_packs/0/checksum'), `bad-manifest: checksum not flagged\n${result.output}`);
     assert(result.output.includes('date-time'), `bad-manifest: date-time not flagged\n${result.output}`);
@@ -130,7 +89,7 @@ try {
         ],
       },
     ];
-    const result = runValidate(writeTarget(root, 'group-valid', validFeatureList(), m));
+    const result = runValidate(writeTarget(root, 'group-valid', m));
     assert(result.ok, `group-valid: unexpectedly failed\n${result.output}`);
   }
 
@@ -143,10 +102,40 @@ try {
         lock: [{ id: 'domain/auth-core', version: '0.1.0' }],
       },
     ];
-    const result = runValidate(writeTarget(root, 'group-missing-version', validFeatureList(), m));
+    const result = runValidate(writeTarget(root, 'group-missing-version', m));
     assert(!result.ok, `group-missing-version: unexpectedly passed\n${result.output}`);
     assert(result.output.includes('/selected_groups/0'), `group-missing-version: wrong violation\n${result.output}`);
     assert(result.output.includes("required field 'version'"), `group-missing-version: version not flagged\n${result.output}`);
+  }
+
+  // A manifest recording linked_skills (four required fields) validates.
+  {
+    const m = validManifest();
+    m.linked_skills = [
+      { pack: 'domain/foo', skill: 'bar', linked_as: 'bar', target: '/abs/.claude/skills/bar' },
+      { pack: 'stack/baz', skill: 'qux', linked_as: 'baz-qux', target: '/abs/.claude/skills/baz-qux' },
+    ];
+    const result = runValidate(writeTarget(root, 'linked-skills-valid', m));
+    assert(result.ok, `linked-skills-valid: unexpectedly failed\n${result.output}`);
+  }
+
+  // A linked_skill missing a required field (target) is rejected.
+  {
+    const m = validManifest();
+    m.linked_skills = [{ pack: 'domain/foo', skill: 'bar', linked_as: 'bar' }];
+    const result = runValidate(writeTarget(root, 'linked-skills-missing-target', m));
+    assert(!result.ok, `linked-skills-missing-target: unexpectedly passed\n${result.output}`);
+    assert(result.output.includes('/linked_skills/0') && result.output.includes("required field 'target'"),
+      `linked-skills-missing-target: wrong violation\n${result.output}`);
+  }
+
+  // A linked_skill with an unknown extra field is rejected (additionalProperties: false).
+  {
+    const m = validManifest();
+    m.linked_skills = [{ pack: 'domain/foo', skill: 'bar', linked_as: 'bar', target: '/x', extra: 1 }];
+    const result = runValidate(writeTarget(root, 'linked-skills-extra', m));
+    assert(!result.ok, `linked-skills-extra: unexpectedly passed\n${result.output}`);
+    assert(result.output.includes("unknown field 'extra'"), `linked-skills-extra: wrong violation\n${result.output}`);
   }
 
   // Missing artifact file fails instead of passing silently.
